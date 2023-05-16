@@ -26,18 +26,26 @@ def build_global_mass_matrix(elements, maxnode):  # составляем гло�
         # print('---------------')
 
     global_mass = sum(local_mass)
-    # print(global_mass)
+    print(global_mass)
     return global_mass
 
 
 def global_stiffness_matrix_with_GU(global_stiffness):
-    global_stiffness[0, :] = global_stiffness[:, 0] = global_stiffness[1, :] = global_stiffness[:, 1] = 0
-    global_stiffness[0, 0] = global_stiffness[1, 1] = 1
+    global_stiffness[0, :] = 0
+    global_stiffness[:, 0] = 0
+    global_stiffness[1, :] = 0
+    global_stiffness[:, 1] = 0
+    global_stiffness[0, 0] = 1
+    global_stiffness[1, 1] = 1
     return global_stiffness
 
 
-def create_global_force(maxnode):
+def create_global_force(maxnode, f_ampl=1):
     global_force = np.zeros((2 * maxnode, 1))
-    global_force[-2, 0] = 1
-
+    global_force[-2, 0] = f_ampl
     return global_force
+
+
+def create_ef_stiffness(dt, global_mass, global_stiffness):
+    ef_stiffness = 1/2/dt**2 * global_mass + global_stiffness
+    return ef_stiffness
