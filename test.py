@@ -1,4 +1,4 @@
 import numpy as np
 
-
-print(np.linspace(0, 10, num=2))
+a = np.array([[1, 2], [3, 4]])
+print(np.matmul(np.linalg.inv(a), a))
