@@ -1,9 +1,5 @@
-from class_beam_elements import Class_beam_elements
-from class_nodes import Class_nodes
-from create_global_matrix import *
 import numpy as np
 from matplotlib import pyplot as plt
-
 
 # np.set_printoptions(precision=1)
 def main_body_fun():
@@ -15,11 +11,13 @@ def main_body_fun():
     E = 2e11  # модуль Юнга
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
-    MaxNode = 10 + 1  # количество узлов
+    MaxNode = 1 + 1  # количество узлов
+    dl = L
     # ---------определяем параметры временного шага----------
     # первая частота балки = 50 Гц, период = 0.02с
-    dt = 1e-3
-    t_end = 2
+    dt = 2e-3
+    t_end = 20
+    nt = int(t_end / dt)
     # ---------определяем параметры метода Ньюмарка----------
     al = 0.25
     bet = 0.5
@@ -34,51 +32,39 @@ def main_body_fun():
     al7 = bet * dt
     # -------------------------------------------------------
 
-    elements = [Class_beam_elements(i, L, MaxNode, E, I, ro) for i in
-                range(MaxNode - 1)]  # создаем массив балочных элементов
-    # nodes = [Class_nodes(i) for i in range(MaxNode)]  # создаем массив узлов
+    global_stiffness = 2 * E * I / dl ** 3 \
+                   * np.array(  # создаем матрицу жесткости для каждого элемента (Stiffness_matrix_beam_elements.jpg)
+            [[1, 0, 0, 0],
+             [0, 1, 0, 0],
+             [0, 0, 6, -3 * dl],
+             [0, 0, -3 * dl, 2 * dl * dl]])
 
-    # формируем матрицы для дифура
-    global_stiffness = build_global_stiffness_matrix(elements, MaxNode)  # собираем глобальную МЖ
-    print(global_stiffness)
-    print('----------------------------------')
-    global_stiffness = global_stiffness_matrix_with_GU(global_stiffness)  # вносим ГУ в МЖ
 
-    print(global_stiffness)
-    print('----------------------------------')
-    global_mass = build_global_mass_matrix(elements, MaxNode)  # собирает глобальную ММ
-    print(global_mass)
-    # global_mass = global_mass_matrix_with_GU(global_mass)  # вносим ГУ в МЖ
 
-    global_force = create_global_force(MaxNode, f_ampl=0)
+    global_mass = ro * dl / 420 \
+                   * np.array(  # создаем матрицу масс для каждого элемента (Mass_matrix_beam_elements.jpg)
+            [[156, 22 * dl, 54, -13 * dl],
+             [22 * dl, 4 * dl * dl, 13 * dl, -3 * dl * dl],
+             [54, 13 * dl, 156, -22 * dl],
+             [-13 * dl, -3 * dl * dl, -22 * dl, 4 * dl * dl]])
 
-    # проверочный для МЖ статический расчет
-    # stat_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
-    # print(stat_def)
-
-    # формируем эффективную матрицу жесткости
-    ef_stiffness = create_ef_stiffness(global_mass, global_stiffness, al0)
-
-    # print(ef_stiffness)
-    # print(np.linalg.inv(ef_stiffness))
+    ef_stiffness = global_stiffness + al0 * global_mass
     ef_stiffness_inv = np.linalg.inv(ef_stiffness)
-    print('ef_stiffness_inv')
-    print(ef_stiffness_inv)
 
-    dis_i = np.zeros((2 * MaxNode, 1))
-    vel_i = np.zeros((2 * MaxNode, 1))
-    acc_i = np.zeros((2 * MaxNode, 1))
-    # dis_i[-2, 0] = 1e-3
-    # vel_i[-2, 0] = 1e-3
-    # acc_i[-2, 0] = 1e-3
+
+    global_force = np.zeros((4, 1))
+    global_force[-2, 0] = 1
+
+    dis_i = np.zeros((4, 1))
+    vel_i = np.zeros((4, 1))
+    # vel_i[-2, 0] = 1
+    acc_i = np.zeros((4, 1))
+    # acc_i = np.matmul(np.linalg.inv(global_mass), global_force)
 
     fig, ax = plt.subplots()
 
     # начинаем цикл по времени
     for t in np.arange(dt, t_end, dt):
-        if t > (dt*10):
-            global_force = create_global_force(MaxNode, f_ampl=1e-3)
-            print(global_force)
         print('Time = ', str(t))
 
         R_ef_2 = np.matmul(global_mass, al0 * dis_i + al2 * vel_i + al3 * acc_i)

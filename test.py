@@ -1,4 +1,5 @@
 import numpy as np
 
 a = np.array([[1, 2], [3, 4]])
-print(np.matmul(np.linalg.inv(a), a))
+b = np.array([[-3, 1], [1, 4]])
+print(np.matmul(a, b))

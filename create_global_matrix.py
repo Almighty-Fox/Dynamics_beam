@@ -44,6 +44,19 @@ def global_stiffness_matrix_with_GU(global_stiffness):
     return global_stiffness
 
 
+def global_mass_matrix_with_GU(global_mass):
+    global_mass[0, :] = 0
+    global_mass[:, 0] = 0
+    global_mass[1, :] = 0
+    global_mass[:, 1] = 0
+
+    # global_stiffness[-2, :] = 0
+    # global_stiffness[:, -2] = 0
+    # global_stiffness[-2, -2] = 1
+    # print(global_stiffness)
+    return global_mass
+
+
 def create_global_force(maxnode, f_ampl=1):
     global_force = np.zeros((2 * maxnode, 1))
     # global_force[int(maxnode), 0] = f_ampl

@@ -14,10 +14,11 @@ def main_body_fun():
     E = 2e11  # модуль Юнга
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
-    MaxNode = 4 + 1  # количество узлов
+    MaxNode = 30 + 1  # количество узлов
+    dl = L
     # ---------определяем параметры временного шага----------
     # первая частота балки = 50 Гц, период = 0.02с
-    dt = 1e-4
+    dt = 1e-3
     t_end = 2
     # -------------------------------------------------------
     al0 = 1 / (dt ** 2)
@@ -26,37 +27,56 @@ def main_body_fun():
     al2 = 2 * al0
     # -------------------------------------------------------
 
-    elements = [Class_beam_elements(i, L, MaxNode, E, I, ro) for i in
-                range(MaxNode - 1)]  # создаем массив балочных элементов
-    # nodes = [Class_nodes(i) for i in range(MaxNode)]  # создаем массив узлов
-
     # формируем матрицы для дифура
-    global_stiffness = build_global_stiffness_matrix(elements, MaxNode)  # собираем глобальную МЖ
-    print(global_stiffness)
-    print('----------------------------------')
-    global_stiffness = global_stiffness_matrix_with_GU(global_stiffness)  # вносим ГУ в МЖ
-    print(global_stiffness)
-    print('----------------------------------')
-    global_mass = build_global_mass_matrix(elements, MaxNode)  # собирает глобальную ММ
-    print(global_mass)
+    global_stiffness = 2 * E * I / dl ** 3 \
+                   * np.array(  # создаем матрицу жесткости для каждого элемента (Stiffness_matrix_beam_elements.jpg)
+            [[1, 0, 0, 0],
+             [0, 1, 0, 0],
+             [0, 0, 6, -3 * dl],
+             [0, 0, -3 * dl, 2 * dl * dl]])
 
-    global_force = create_global_force(MaxNode, f_ampl=0)
+    global_mass = ro * dl / 420 \
+                  * np.array(  # создаем матрицу масс для каждого элемента (Mass_matrix_beam_elements.jpg)
+        [[156, 22 * dl, 54, -13 * dl],
+         [22 * dl, 4 * dl * dl, 13 * dl, -3 * dl * dl],
+         [54, 13 * dl, 156, -22 * dl],
+         [-13 * dl, -3 * dl * dl, -22 * dl, 4 * dl * dl]])
+
+    # global_mass = ro * dl / 420 \
+    #               * np.array(  # создаем матрицу масс для каждого элемента (Mass_matrix_beam_elements.jpg)
+    #     [[1, 0, 0, 0],
+    #      [0, 1, 0, 0],
+    #      [0, 0, 156, -22 * dl],
+    #      [0, 0, -22 * dl, 4 * dl * dl]])
+
+    global_force = np.zeros((4, 1))
+    global_force[-2, 0] = 1
+    # global_force[-1, 0] = 1
 
     # проверочный для МЖ статический расчет
-    # stat_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
-    # print(stat_def)
+    stat_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
+    print(stat_def)
 
     # формируем эффективную матрицу жесткости
     ef_mass = al0 * global_mass
     ef_mass_inv = np.linalg.inv(ef_mass)
 
-    dis_i = np.zeros((2 * MaxNode, 1))
-    vel_i = np.zeros((2 * MaxNode, 1))
-    acc_i = np.zeros((2 * MaxNode, 1))
-    dis_i_1 = np.zeros((2 * MaxNode, 1))
-    vel_i_1 = np.zeros((2 * MaxNode, 1))
-    acc_i_1 = np.zeros((2 * MaxNode, 1))
-    # acc_i[-2, 0] = 1e-3
+    dis_i = np.zeros((4, 1))
+    vel_i = np.zeros((4, 1))
+    acc_i = np.zeros((4, 1))
+    dis_i_1 = np.zeros((4, 1))
+    vel_i_1 = np.zeros((4, 1))
+    acc_i_1 = np.zeros((4, 1))
+
+    # dis_i[-2, 0] = 1e-3
+    # vel_i[-2, 0] = 2
+    # acc_i[-2, 0] = 1
+
+    # dis_i[-1, 0] = 1e-3
+    # vel_i[-1, 0] = 2
+    # acc_i[-1, 0] = 1
+    # dis_i_1[-2, 0] = 1e-3 - dt * 2 + dt ** 2 / 2 * 1
+    # dis_i_1[-1, 0] = 1e-3 - dt * 2 + dt ** 2 / 2 * 1
 
     fig, ax = plt.subplots()
 
@@ -66,7 +86,8 @@ def main_body_fun():
     # начинаем цикл по времени
     for t in np.arange(dt, t_end, dt):
         if t > (dt*5):
-            global_force = create_global_force(MaxNode, f_ampl=1)
+            global_force[-2, 0] = 0
+        #     global_force[-1, 0] = 0
         print('Time = ', str(t))
 
         R_ef = global_force - np.matmul((global_stiffness - al2 * global_mass), dis_i) - al0 * np.matmul(global_mass, dis_i_1)
@@ -89,20 +110,21 @@ def main_body_fun():
 
         # fig.suptitle('Время = ' + str(t) + ' c = ')
 
-        lst_dis = [dis_i1[i * 2, 0] for i in range(MaxNode)]
+        # lst_dis = [dis_i1[i * 2, 0] for i in range(MaxNode)]
         # ax.set_ylim([-3e-2, 3e-2])
-        ax.plot(np.linspace(0, L, num=MaxNode), lst_dis, 'r', linewidth=1)
-        plt.pause(0.02)
-        ax.clear()
 
-        # time_disp.append(dis_i1[-2, 0])
-        # time_lst.append(t)
-        # # print(time_disp)
-        # # print(np.arange(0, t, dt))
-        # # ax.set_ylim([-3e-2, 3e-2])
-        # ax.plot(time_lst, time_disp, 'r', linewidth=1)
+        # ax.plot([0, 1], [dis_i1[0], dis_i1[-2]], 'r', linewidth=1)
         # plt.pause(0.02)
         # ax.clear()
+
+        time_disp.append(dis_i1[-2, 0])
+        time_lst.append(t)
+        # print(time_disp)
+        # print(np.arange(0, t, dt))
+        # ax.set_ylim([-3e-2, 3e-2])
+        ax.plot(time_lst, time_disp, 'r', linewidth=1)
+        plt.pause(0.02)
+        ax.clear()
 
 
 main_body_fun()
