@@ -16,18 +16,17 @@ def main_body_fun():
     L = 1
     MaxNode = 100 + 1  # количество узлов
     # ---------определяем параметры временного шага----------
-    # первая частота балки = 50 Гц, период = 0.02с
-    dt = 2e-3
-    t_end = 20
+    # первая частота балки = 8 Гц, период = 0.125с
+    dt = 2e-3  # шаг по времени
+    t_end = 20  # исследуемый интервал времени
     nt = int(t_end / dt)
     # ---------определяем параметры метода Ньюмарка----------
-    beta2 = 0.5
     beta1 = 0.5
+    beta2 = 0.5
     # -------------------------------------------------------
 
     elements = [Class_beam_elements(i, L, MaxNode, E, I, ro) for i in
                 range(MaxNode - 1)]  # создаем массив балочных элементов
-    # nodes = [Class_nodes(i) for i in range(MaxNode)]  # создаем массив узлов
 
     # формируем матрицы для дифура
     global_stiffness = build_global_stiffness_matrix(elements, MaxNode)  # собираем глобальную МЖ
@@ -38,29 +37,36 @@ def main_body_fun():
     print('----------------------------------')
     global_mass = build_global_mass_matrix(elements, MaxNode)  # собирает глобальную ММ
     print(global_mass)
-    # global_mass = global_stiffness_matrix_with_GU(global_mass)  # вносим ГУ в МЖ
 
-    global_force = create_global_force(MaxNode, f_ampl=0)
+    global_force = create_global_force(MaxNode, f_ampl=0)  # создаем вектор сил
     print(global_force)
 
     # проверочный для МЖ статический расчет
     # stat_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
     # print(stat_def)
 
-
+    # ------------Начало метода Ньюмарка----------------------------
     MK = global_mass + 0.5 * beta2 * dt**2 * global_stiffness
 
-    dis_i = np.zeros((2 * MaxNode, 1))
-    vel_i = np.zeros((2 * MaxNode, 1))
-    # vel_i[MaxNode, 0] = 2
-    # acc_i = np.zeros((2 * MaxNode, 1))
-    # acc_i = np.matmul(np.linalg.inv(global_mass), global_force)
-
+    dis_i = np.zeros((2 * MaxNode, 1))  # начальный вектор координат
+    vel_i = np.zeros((2 * MaxNode, 1))  # начальный вектор скоростей
+    # считаем начальный вектор ускорений
     acc_i = np.matmul(np.linalg.inv(global_mass), (-np.matmul(global_stiffness, dis_i) + global_force))
 
-    fig, ax = plt.subplots()
-    time_disp = []
-    time_lst = []
+    time_disp = [dis_i[-2, 0]]
+    time_lst = [0]
+
+    fig, axs = plt.subplots(2)
+    plt.subplots_adjust(wspace=0.6, hspace=0.4)
+    # fig.suptitle('ГРАФИКИ')
+    axs[0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
+    axs[1].plot(time_lst, time_disp, 'g', linewidth=1)
+    axs[0].set_title('Форма балки')
+    axs[1].set_title('Временная з-ть узла балки')
+    plt.pause(2)
+    axs[0].clear()
+    axs[1].clear()
+
     # начинаем цикл по времени
     for t in np.arange(dt, t_end, dt):
         print('Time = ', str(t))
@@ -72,10 +78,6 @@ def main_body_fun():
         # global_force = create_global_force(MaxNode, f_ampl=np.sin(2*np.pi*15 * t))
         # global_force = create_global_force(MaxNode, f_ampl=0)
 
-        # if t == dt*20:
-        #     vel_i[MaxNode+1, 0] = -vel_i[MaxNode+1, 0]
-        #     acc_i[MaxNode + 1, 0] = -acc_i[MaxNode + 1, 0]
-
         print(vel_i[MaxNode+1, 0])
 
         acc_i1 = np.matmul(np.linalg.inv(MK), global_force - np.matmul(global_stiffness, dis_i + dt*vel_i + 0.5*(1-beta2)*dt**2*acc_i))
@@ -83,30 +85,25 @@ def main_body_fun():
         vel_i1 = vel_i + dt*(1-beta1)*acc_i + dt*beta1*acc_i1
         dis_i1 = dis_i + dt*vel_i + (1-beta2)*0.5*dt**2*acc_i + 0.5*beta2*dt**2*acc_i1
 
-
-        # print(np.reshape(np.array(dis_i1), (1, -1)))
-
         dis_i = dis_i1.copy()
         vel_i = vel_i1.copy()
         acc_i = acc_i1.copy()
 
+        time_disp.append(dis_i1[-2, 0])
+        time_lst.append(t)
+
+        axs[0].set_title('Форма балки')
+        axs[1].set_title('Временная з-ть узла балки')
+        fig.suptitle('Время = ' + str('%.2f' % t)
+                     + ' c = ' + str('%.2f' % (t * 1e3)) + ' мс = ' + str('%.2f' % (t * 1e6)) + ' мкс')
+        axs[0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
+        axs[0].axis([0, L, -max(time_disp)*1.1, max(time_disp)*1.1])  # устанавливаем диапозон осей
+        axs[1].plot(time_lst, time_disp, 'g', linewidth=1)
+        plt.pause(0.01)
+        axs[0].clear()
+        axs[1].clear()
 
 
-        fig.suptitle('Время = ' + str(t) + ' c = ')
-        lst_dis = [dis_i[i * 2, 0] for i in range(MaxNode)]
-        ax.set_ylim([-5e-3, 5e-3])
-        ax.plot(np.linspace(0, L, num=MaxNode), lst_dis, 'r', linewidth=1)
-        plt.pause(0.2)
-        ax.clear()
-
-        # time_disp.append(dis_i1[-2, 0])
-        # time_lst.append(t)
-        # # print(time_disp)
-        # # print(np.arange(0, t, dt))
-        # # ax.set_ylim([-3e-2, 3e-2])
-        # ax.plot(time_lst, time_disp, 'r', linewidth=1)
-        # plt.pause(0.0002)
-        # ax.clear()
 
 
 main_body_fun()
