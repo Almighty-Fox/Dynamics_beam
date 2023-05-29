@@ -16,10 +16,10 @@ def main_body_fun():
     nu = 0.3  # коэффициент Пуассона
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
-    MaxNode = 20 + 1  # количество узлов
+    MaxNode = 100 + 1  # количество узлов
     # ---------определяем параметры временного шага----------
     # первая частота балки = 8 Гц, период = 0.125с
-    dt = 1e-5  # шаг по времени
+    dt = 1e-3  # шаг по времени
     t_end = 200  # исследуемый интервал времени
     # ---------определяем параметры метода Ньюмарка----------
     gamma = 0.5
@@ -52,7 +52,7 @@ def main_body_fun():
     # print(stat_def)
 
     # ------------Начало метода Ньюмарка----------------------------
-    MCK = global_mass + gamma * dt * global_damping + beta * dt**2 * global_stiffness
+    # MCK = global_mass + gamma * dt * global_damping + beta * dt**2 * global_stiffness
 
     dis_i = np.zeros((2 * MaxNode, 1))  # начальный вектор координат
     vel_i = np.zeros((2 * MaxNode, 1))  # начальный вектор скоростей
@@ -60,6 +60,7 @@ def main_body_fun():
     acc_i = np.matmul(np.linalg.inv(global_mass), (global_force - np.matmul(global_damping, vel_i) - np.matmul(global_stiffness, dis_i)))
 
     time_disp = [dis_i[(MaxNode//2)*2, 0]]
+    time_disp_end = [dis_i[-2, 0]]
     time_lst = [0]
 
     fig, axs = plt.subplots(2)
@@ -75,16 +76,24 @@ def main_body_fun():
     axs[1].clear()
 
     # delta = a/2 + 5e-4
-    delta = 5e-4
+    delta = 2e-5
     k_c = 2 * E * 10e-3 ** 0.5 / 3 / (1 - nu ** 2)
     print('k_c = {}'.format(k_c))
     vel_i_before = vel_i[(MaxNode // 2) * 2, 0]
     # -------------------------------------------------------------------------------------
     # начинаем цикл по времени
-    for t in np.arange(dt, t_end, dt):
-        print('Time = ', str(t))
+    t = 0
+    # t_end = 0.07839
+    while t < t_end:
+        t += dt
 
-        f_ampl = -np.sin(2 * np.pi * 5 * t)
+        MCK = global_mass + gamma * dt * global_damping + beta * dt ** 2 * global_stiffness
+
+        print('Time = ', str(t))
+        if t < dt * 20:
+            f_ampl = -6 * np.sin(2 * np.pi * 5 * t)
+        else:
+            f_ampl = 0
         global_force = create_global_force(global_force, MaxNode, f_ampl)
         global_force[(MaxNode // 2) * 2, 0] = 0
         # del_i = delta + dis_i[(MaxNode // 2) * 2, 0] - a / 2
@@ -109,21 +118,30 @@ def main_body_fun():
         acc_i = acc_i1.copy()
 
         time_disp.append(dis_i1[(MaxNode//2)*2, 0])
+        time_disp_end.append(dis_i1[-2, 0])
         time_lst.append(t)
 
         axs[0].set_title('Форма балки')
-        axs[1].set_title('Временная з-ть узла балки')
+        axs[1].set_title('Временная з-ть узла балки. \n Черная - конец, зеленая - середина.')
         fig.suptitle('Время = ' + str('%.2f' % t)
                      + ' c = ' + str('%.2f' % (t * 1e3)) + ' мс = ' + str('%.2f' % (t * 1e6)) + ' мкс')
         axs[0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
-        scale = max(abs(min(time_disp)), abs(max(time_disp)))
-        axs[0].axis([0, L * 1.1, -scale*5, scale*5])  # устанавливаем диапозон осей
+        axs[0].plot([L / 2], [-delta], 'k*', linewidth=4)
+        scale = max(abs(min(time_disp_end)), abs(max(time_disp)))
+        axs[0].axis([0, L * 1.1, -scale*1.2, scale*1.2])  # устанавливаем диапозон осей
+        # axs[0].axis([0, L * 1.1, -delta * 3, delta * 3])
         axs[1].plot(time_lst, time_disp, 'g', linewidth=1)
-        plt.pause(0.01)
+        axs[1].plot(time_lst, time_disp_end, 'k', linewidth=1)
+        plt.pause(0.0001)
         axs[0].clear()
         axs[1].clear()
 
+        if 2 * dis_i[(MaxNode // 2) * 2, 0] <= -delta:
+            dt = 3e-5
+        else:
+            dt = 2e-4
 
+    # plt.pause(2000000)
 
 
 main_body_fun()
