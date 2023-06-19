@@ -61,25 +61,32 @@ def main_body_fun():
 
     time_disp = [dis_i[(MaxNode//2)*2, 0]]
     time_disp_end = [dis_i[-2, 0]]
+    time_force = [global_force[(MaxNode//2)*2, 0]]
     time_lst = [0]
 
-    fig, axs = plt.subplots(2)
-    plt.subplots_adjust(wspace=0.6, hspace=0.4)
+    fig, axs = plt.subplots(3)
+    plt.subplots_adjust(wspace=0.4, hspace=0.7)
     # fig.suptitle('ГРАФИКИ')
     axs[0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
     # axs[0].axis([0, L * 1.1, -max(time_disp) * 1.1, max(time_disp) * 1.1])  # устанавливаем диапозон осей
     axs[1].plot(time_lst, time_disp, 'g', linewidth=1)
+    axs[2].plot(time_lst, time_force, 'g', linewidth=1)
     axs[0].set_title('Форма балки')
     axs[1].set_title('Временная з-ть узла балки')
+    axs[2].set_title('VI force')
     plt.pause(2)
     axs[0].clear()
     axs[1].clear()
+    axs[2].clear()
 
     # delta = a/2 + 5e-4
     delta = 2e-5
+    delta_original = delta
+
     k_c = 2 * E * 10e-3 ** 0.5 / 3 / (1 - nu ** 2)
     print('k_c = {}'.format(k_c))
     vel_i_before = vel_i[(MaxNode // 2) * 2, 0]
+    dis_i_before = dis_i[(MaxNode // 2) * 2, 0]
     # -------------------------------------------------------------------------------------
     # начинаем цикл по времени
     t = 0
@@ -90,19 +97,21 @@ def main_body_fun():
         MCK = global_mass + gamma * dt * global_damping + beta * dt ** 2 * global_stiffness
 
         print('Time = ', str(t))
-        if t < dt * 20:
+        if t < dt * 100:
             f_ampl = -6 * np.sin(2 * np.pi * 5 * t)
         else:
             f_ampl = 0
         global_force = create_global_force(global_force, MaxNode, f_ampl)
         global_force[(MaxNode // 2) * 2, 0] = 0
-        # del_i = delta + dis_i[(MaxNode // 2) * 2, 0] - a / 2
-        # if (-dis_i[(MaxNode // 2) * 2, 0] - del_i) > 0:
+
         if -dis_i[(MaxNode // 2) * 2, 0] - delta >= 0:
+            delta = -dis_i_before * 0.999  # динамически двигаем барьер
             print('Действует сила')
             global_force = create_VI_force(global_force, MaxNode, delta, dis_i, vel_i, vel_i_before, k_c, restitution=0.7)
         else:
+            delta = delta_original
             vel_i_before = vel_i[(MaxNode // 2) * 2, 0]
+            dis_i_before = dis_i[(MaxNode // 2) * 2, 0]
 
         # print(vel_i[MaxNode+1, 0])
         vel_i1_pred = vel_i + (1 - gamma) * dt * acc_i
@@ -119,10 +128,12 @@ def main_body_fun():
 
         time_disp.append(dis_i1[(MaxNode//2)*2, 0])
         time_disp_end.append(dis_i1[-2, 0])
+        time_force.append(global_force[(MaxNode // 2) * 2, 0])
         time_lst.append(t)
 
         axs[0].set_title('Форма балки')
         axs[1].set_title('Временная з-ть узла балки. \n Черная - конец, зеленая - середина.')
+        axs[2].set_title('VI force')
         fig.suptitle('Время = ' + str('%.2f' % t)
                      + ' c = ' + str('%.2f' % (t * 1e3)) + ' мс = ' + str('%.2f' % (t * 1e6)) + ' мкс')
         axs[0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
@@ -132,14 +143,16 @@ def main_body_fun():
         # axs[0].axis([0, L * 1.1, -delta * 3, delta * 3])
         axs[1].plot(time_lst, time_disp, 'g', linewidth=1)
         axs[1].plot(time_lst, time_disp_end, 'k', linewidth=1)
+        axs[2].plot(time_lst, time_force, 'k', linewidth=1)
         plt.pause(0.0001)
         axs[0].clear()
         axs[1].clear()
+        axs[2].clear()
 
         if 2 * dis_i[(MaxNode // 2) * 2, 0] <= -delta:
-            dt = 3e-5
+            dt = 1e-5
         else:
-            dt = 2e-4
+            dt = 1e-4
 
     # plt.pause(2000000)
 

@@ -40,7 +40,8 @@ def main_body_fun():
     global_mass = build_global_mass_matrix(elements, MaxNode)  # собирает глобальную ММ
     print(global_mass)
 
-    global_force = create_global_force(MaxNode, f_ampl=0)
+    global_force = np.zeros((2 * MaxNode, 1))
+    global_force = create_global_force(global_force, MaxNode, f_ampl=0)  # создаем вектор сил
 
     # проверочный для МЖ статический расчет
     # stat_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
@@ -66,7 +67,7 @@ def main_body_fun():
     # начинаем цикл по времени
     for t in np.arange(dt, t_end, dt):
         if t > (dt*5):
-            global_force = create_global_force(MaxNode, f_ampl=1)
+            global_force = create_global_force(global_force, MaxNode, f_ampl=1)
         print('Time = ', str(t))
 
         R_ef = global_force - np.matmul((global_stiffness - al2 * global_mass), dis_i) - al0 * np.matmul(global_mass, dis_i_1)
