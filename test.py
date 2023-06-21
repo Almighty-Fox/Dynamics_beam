@@ -1,5 +1,7 @@
 import numpy as np
 
-a = np.array([[1, 2], [3, 4]])
-b = np.array([[-3, 1], [1, 4]])
-print(np.matmul(a, b))
+print(round(2.1))
+print(round(1.7))
+print(round(2.0))
+print(round(2.5))
+print(round(2.6))
