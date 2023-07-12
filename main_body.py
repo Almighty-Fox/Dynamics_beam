@@ -15,7 +15,8 @@ def main_body_fun():
     nu = 0.3  # коэффициент Пуассона
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
-    MaxNode = 100 + 1  # количество узлов
+    MaxNode = 10 + 1  # количество узлов
+    dl = L / (MaxNode - 1)
     # ---------определяем параметры временного шага----------
     # первая частота балки = 8 Гц, период = 0.125с
     dt = 1e-4  # шаг по времени
@@ -37,23 +38,30 @@ def main_body_fun():
     global_damping = 0 * global_stiffness + 0 * global_mass  # глобальная МД (матрица демпфирования). Нулевое демпфирование
 
     global_force = np.zeros((2 * MaxNode, 1))  # создаем размер глобального вектора сил
-    global_force = create_global_force(global_force, f_ampl=0)  # создаем начальный вектор сил
+    global_force = create_global_force(global_force, f_ampl=1)  # создаем начальный вектор сил
+
+    eigenvectors_normalized = create_modal_matrix(global_stiffness, global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
 
     # проверочный для МЖ (матрица жесткости) статический расчет
-    # stat_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
-    # print(stat_def)
+    # с помощью него зададим начальные координаты
+    start_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
+    print(start_def)
 
     # Начало метода Ньюмарка
-    dis_i = np.zeros((2 * MaxNode, 1))  # начальный вектор координат
+    # dis_i = np.zeros((2 * MaxNode, 1))  # начальный вектор координат
+    dis_i = start_def.copy()  # начальный вектор координат
     vel_i = np.zeros((2 * MaxNode, 1))  # начальный вектор скоростей
+    # modal_vel_i = np.zeros((2 * MaxNode, 1))  # начальный вектор модальных скоростей
+
     # считаем начальный вектор ускорений
     acc_i = np.matmul(np.linalg.inv(global_mass),
                       (global_force - np.matmul(global_damping, vel_i) - np.matmul(global_stiffness, dis_i)))
 
     # ------------------------------ параметры барьера ----------------------------------
-    loc_bar = 0.8  # местоположение барьера вдоль оси балки (от 0 до 1)
-    point_bar = round(MaxNode * loc_bar) * 2  # номер эелемента в глобальном векторе сил, на который действует сила VI
-    delta = 2e-5  # зазор
+    loc_bar = 0.6  # местоположение барьера вдоль оси балки (от 0 до 1)
+    point_bar = round((MaxNode - 1) * loc_bar) * 2  # номер эелемента в глобальном векторе сил, на который действует сила VI
+    # delta = 5e-7  # зазор
+    delta = start_def[point_bar, 0] / 10  # зазор
     delta_original = delta  # динамически немного далее двигаем барьер
     # ---------------------------
 
@@ -61,6 +69,8 @@ def main_body_fun():
     time_disp_end = [dis_i[-2, 0]]  # запоминаем з-ть коодинаты конца балки
     time_force = [global_force[point_bar, 0]]  # запоминаем з-ть VI силы
     time_lst = [0]  # массив времени
+    en_kin = [0]  # массив кинетической энергии балки
+    modal_vel_time = [0]  # массив суммы квадратов модальный скоростей
 
     fig, axs = plt.subplots(3)
     plt.subplots_adjust(wspace=0.4, hspace=0.7)
@@ -69,7 +79,8 @@ def main_body_fun():
     axs[1].set_title('Временная з-ть узла балки. \n Черная - конец, зеленая - середина.', fontsize=10)
     axs[2].set_title('VI force')
     axs[0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
-    # axs[0].axis([0, L * 1.1, -max(time_disp) * 1.1, max(time_disp) * 1.1])  # устанавливаем диапозон осей
+    scale = start_def[-2][0]  # Масштаб графика формы балки
+    axs[0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
     axs[1].plot(time_lst, time_disp, 'g', linewidth=1)
     axs[1].plot(time_lst, time_disp_end, 'k', linewidth=1)
     axs[2].plot(time_lst, time_force, 'k', linewidth=1)
@@ -78,9 +89,8 @@ def main_body_fun():
     axs[1].clear()
     axs[2].clear()
 
-
     # ------- для вычисления силы VI ----------------------
-    k_c = 2 * E * 10e-3 ** 0.5 / 3 / (1 - nu ** 2)  # константа в формуле силы VI
+    k_c = 10e-3 * 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
     print('k_c = {}'.format(k_c))
     vel_i_before = vel_i[point_bar, 0]
     dis_i_before = dis_i[point_bar, 0]
@@ -95,21 +105,23 @@ def main_body_fun():
             MCK = global_mass + gamma * dt * global_damping + beta * dt ** 2 * global_stiffness
 
             print('Time = ', str(t))
-            if t < 3e-3:
-            # if t < dt * 100:
-                f_ampl = -6 * np.sin(2 * np.pi * 5 * t)
-            else:
-                f_ampl = 0
-            global_force = create_global_force(global_force, f_ampl)
+            # if True:
+            # if t < 2e-3:
+            # # if t < dt * 100:
+            #     f_ampl = -600 * np.sin(2 * np.pi * 5 * t)
+            #     # f_ampl = 1
+            # else:
+            #     f_ampl = 0
+            global_force = create_global_force(global_force, f_ampl=0)
             global_force[point_bar, 0] = 0
 
             if -dis_i[point_bar, 0] - delta >= 0:
-                delta = -dis_i_before * 0.999  # динамически двигаем барьер
+                # delta = -dis_i_before * 0.999  # динамически двигаем барьер
                 print('Действует сила')
                 global_force = create_VI_force(global_force, point_bar, delta, dis_i[point_bar, 0], vel_i[point_bar, 0],
-                                               vel_i_before, k_c, restitution=1)
+                                               vel_i_before, k_c, restitution=0.7)
             else:
-                delta = delta_original
+                # delta = delta_original
                 vel_i_before = vel_i[point_bar, 0]
                 dis_i_before = dis_i[point_bar, 0]
 
@@ -143,7 +155,8 @@ def main_body_fun():
             axs[0].plot([L * loc_bar], [dis_i1[point_bar, 0]], 'go', markersize=4)  # Жирная точка середина балки
             axs[0].plot([L], [dis_i1[-2, 0]], 'ko', markersize=4)  # Жирная точка конца балки
             axs[0].plot([L * loc_bar], [-delta], 'b^', markersize=7)  # Местоположение барьера
-            scale = max(abs(min(time_disp_end)), abs(max(time_disp_end)), delta * 2)  # Масштаб графика формы балки
+            # scale = max(abs(min(time_disp_end)), abs(max(time_disp_end)), delta * 2)  # Масштаб графика формы балки
+            scale = start_def[-2][0]  # Масштаб графика формы балки
             axs[0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
 
             axs[1].plot(time_lst, time_disp, color='g', linewidth=1)  # временная з-ть середины балки
@@ -156,8 +169,26 @@ def main_body_fun():
             axs[1].clear()
             axs[2].clear()
 
-            if 2 * dis_i[point_bar, 0] <= -delta:
-                dt = 1e-5
+            # ----------- выводим график кинетической энергии --------
+            vel_i_transp = [vel for sublist in vel_i for vel in sublist]
+            vel_i_translational = vel_i_transp[::2]
+            vel_i_rotational = vel_i_transp[1::2]
+            I_inertia_en = 1 / 3 * (ro * dl) * dl**2
+            en_kin.append((ro * dl) / 2 * sum([vel**2 for vel in vel_i_translational]) + I_inertia_en / 2 * sum([vel**2 for vel in vel_i_rotational]))
+            plt.figure(2)
+            plt.plot(time_lst, en_kin, color='k', linewidth=1)
+            # --------------------------------------------------------
+            # ----------- выводим график модальный скоростей --------
+            modal_vel_i = np.matmul(np.linalg.inv(eigenvectors_normalized), vel_i)
+            modal_vel_i_transp = [modal_vel for sublist in modal_vel_i for modal_vel in sublist]
+            # modal_vel_time.append(sum(list(map(lambda x: x**2, modal_vel_i_transp))) / 2)
+            modal_vel_time.append(modal_vel_i_transp[2])
+            plt.figure(3)
+            plt.plot(time_lst, modal_vel_time, color='k', linewidth=1)
+            # --------------------------------------------------------
+
+            if 10 * dis_i[point_bar, 0] <= -delta:
+                dt = 1e-4
             else:
                 dt = 1e-4
 

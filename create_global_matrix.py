@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import eigh
 
 
 # резмерность глобальной матрицы жесткости (2 * maxnode, 2 * maxnode) поскольку в каждом узле по 2 DOF
@@ -42,7 +43,7 @@ def build_global_mass_matrix(elements, maxnode):  # составляем гло�
     return global_mass
 
 
-def create_global_force(global_force, f_ampl=1):
+def create_global_force(global_force, f_ampl):
     global_force[-2, 0] = f_ampl
     return global_force
 
@@ -51,7 +52,9 @@ def create_VI_force(global_force, point_bar, delta, dis_i_bar, vel_i_bar, vel_i_
     plus_slag = -dis_i_bar - delta
     if plus_slag <= 0:
         plus_slag = 0
-    VI_force = k_c * plus_slag**(3/2) * (1 + 3 * (1 - restitution) / 2 / vel_i_before * vel_i_bar)
+    # VI_force = k_c * plus_slag**(3/2) * (1 + 3 * (1 - restitution) / 2 / vel_i_before * vel_i_bar)
+    VI_force = k_c * plus_slag ** (3 / 2)
+    # VI_force = 0
     print('vel_i_before = {}'.format(vel_i_before))
     print('vel_i[(maxnode // 2) * 2, 0] = {}'.format(vel_i_bar))
     print('plus_slag**(3/2) = {}'.format(plus_slag**(3/2)))
@@ -59,3 +62,26 @@ def create_VI_force(global_force, point_bar, delta, dis_i_bar, vel_i_bar, vel_i_
     global_force[point_bar, 0] = VI_force
 
     return global_force
+
+
+def create_modal_matrix(K, M):
+    # Solve the eigenvalue problem
+    eigenvalues, eigenvectors = eigh(K, M)
+
+    # Perform mass-orthonormalization of eigenvectors
+    eigenvectors_normalized = eigenvectors / np.sqrt(np.diag(np.dot(eigenvectors.T, np.dot(M, eigenvectors))))
+
+    # Print the eigenvalues
+    print("Eigenvalues:")
+    print(eigenvalues)
+
+    # Print the eigenvectors
+    print("Eigenvectors:")
+    print(eigenvectors_normalized)
+
+    # Verify mass-orthonormality of eigenvectors
+    mass_orthonormality = np.dot(eigenvectors_normalized.T, np.dot(M, eigenvectors_normalized))
+    print("Mass-Orthonormality:")
+    print(mass_orthonormality)
+
+    return eigenvectors_normalized
