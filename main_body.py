@@ -15,7 +15,7 @@ def main_body_fun():
     nu = 0.3  # коэффициент Пуассона
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
-    MaxNode = 10 + 1  # количество узлов
+    MaxNode = 40 + 1  # количество узлов
     dl = L / (MaxNode - 1)
     # ---------определяем параметры временного шага----------
     # первая частота балки = 8 Гц, период = 0.125с
@@ -46,6 +46,7 @@ def main_body_fun():
     # с помощью него зададим начальные координаты
     start_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
     print(start_def)
+    print(np.concatenate(start_def).ravel().tolist())
 
     # Начало метода Ньюмарка
     # dis_i = np.zeros((2 * MaxNode, 1))  # начальный вектор координат

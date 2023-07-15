@@ -31,13 +31,13 @@ def find_u_i(alpha_l):  # для массива из собственных зн
 l = 1.0
 ro = 7850
 E = 2e11
-a = 25e-3
+a = 10e-3
 b = a
 F = a * b
 Jx = a * b**3 / 12
 P_0 = 100
 
-point = 100  # количество элементов балки
+point = 100 + 1  # количество элементов балки
 
 
 w_sobst = (1.875 / l)**2 * np.power((E * Jx / ro / F), (1/2))
@@ -45,15 +45,14 @@ w_vnesh = 3 * w_sobst
 
 P_0_2 = P_0 / E / Jx
 
-step = 0.0005
+step = 0.0001
 time_end = 100
-list_time = [0.]
-y_end = [0.]
-accel_end = [0.]  # массив ускорения конца балки
+list_time = []
+y_end = []
 
 
 alpha_l_list = np.array([1.8864, 4.6941, 7.8548, 10.9955, 14.1372, 17.2788])
-# alpha_l_list = np.array([1.875])
+# alpha_l_list = np.array([1.8864])
 # alpha_l_list = np.array([1.8864, 4.6941])
 
 step_integ = np.array([0., 0.])  # тут будем хранить значения двух интегралов
@@ -70,22 +69,48 @@ for id, alpha_l in enumerate(alpha_l_list):  # для каждой собств�
     int_z_list[id] = int_z_i
     u_list_point.append(np.array([u_i(ii) for ii in np.linspace(0, l, point)]))  # двумерный массив, внешний по собственным частотам, внутренний по координатам
 
-y_list = np.zeros(point, dtype=float)
+# Начальные условия учитываются в betta0 and betta0_dif
+RRR = ro * F / E / Jx
 
+disp0 = u_list_point[0] / 10000  # выбираем начальное перемещение в точности по собственной форме
+# with open('write_disp.txt', 'r') as cur_file:  # начальное перемещение по точкам из стат. расчета МКЭ (FEM_create_initial_disp_list.py)
+#     disp0 = []
+#     for line in cur_file:
+#         line = line.strip()
+#         disp0.append(float(line))
+# disp0 = np.array(disp0)
+# print(len(disp0))
+
+disp0_dif = np.zeros(point, dtype=float)
+dl = l / (point - 1)
+betta0 = np.zeros(len(alpha_l_list), dtype=float)
+betta0_dif = np.zeros(len(alpha_l_list), dtype=float)
+for id, alpha_l in enumerate(alpha_l_list):
+    u_i = u_list[id]
+    # print(u_list_point[id])
+    # print(disp0 * u_list_point[id])
+    # print(sum(disp0 * u_list_point[id]))
+    betta0[id] = RRR * dl * ((sum(disp0 * u_list_point[id]) + sum(disp0[:-1] * u_list_point[id][:-1])) / 2)  # считаем интеграл для betta0 по методу трапеций (среднее между верхней и нижней суммой Дарбу)
+    betta0_dif[id] = RRR * dl * ((sum(disp0_dif * u_list_point[id]) + sum(disp0_dif[:-1] * u_list_point[id][:-1])) / 2)  # считаем интеграл для betta0
+
+
+y_list = np.zeros(point, dtype=float)
 betta_i = np.zeros(len(alpha_l_list), dtype=float)
 
 for id in range(len(alpha_l_list)):  # для первого шага по времени, пришлось для него отдельно расписать цикл, в общем цикле иначе было бы деление на ноль
     w_sobst_i = w_sobst_list[id]
     int_z_i = int_z_list[id]
 
-    expr_1_i = lambda time: P_0_2 * int_z_i * cos(w_sobst_i * time)  # подынтегральная функция для поиска бэтта
-    expr_2_i = lambda time: P_0_2 * int_z_i * sin(w_sobst_i * time)
+    # expr_1_i = lambda time: P_0_2 * int_z_i * np.cos(w_sobst_i * time)  # подынтегральная функция для поиска бэтта
+    # expr_2_i = lambda time: P_0_2 * int_z_i * np.sin(w_sobst_i * time)
+    expr_1_i = lambda time: 0
+    expr_2_i = lambda time: 0
 
     step_integ = np.array([integrate.quad(expr_1_i, 0, step)[0], integrate.quad(expr_2_i, 0, step)[0]])
 
     list_of_step_integ[id] = step_integ
 
-    betta_i[id] = 1 / w_sobst_i * (sin(w_sobst_i * step) * step_integ[0] - cos(w_sobst_i * step) * step_integ[1])
+    betta_i[id] = betta0[id] * np.cos(w_sobst_i * step) + betta0_dif[id] / w_sobst_i * np.sin(w_sobst_i * step) + 1 / w_sobst_i * (sin(w_sobst_i * step) * step_integ[0] - cos(w_sobst_i * step) * step_integ[1])
 
     y_i = betta_i[id] * u_list_point[id]  # суммарная функция колебания
 
@@ -93,6 +118,34 @@ for id in range(len(alpha_l_list)):  # для первого шага по вр�
 
 fig, axs = plt.subplots(2)  # создаем саб плот из 2 графиков
 plt.subplots_adjust(wspace=0.6, hspace=0.4)
+
+
+# fig.suptitle('Time = ' + str("%.5g" % t))
+fig.suptitle('Time = ' + str("%.4f" % step))
+
+
+# вывод графика колебания конца балки
+y_end.append(y_list[-1])
+list_time.append(step)
+axs[1].plot(list_time, y_end, 'g', linewidth=1)
+axs[1].set_title('Координата конца')
+# axs[1].set_ylim(-4e-4, 4e-4)
+print("%.5g" % step, "%.5g" % y_list[-1])
+
+
+# вывод графика колебания балки
+
+axs[0].plot(np.linspace(0, l, point), y_list, 'r', linewidth=1)
+axs[0].set_title('Балка')
+axs[0].set_xlim(0, l)
+# axs[0].set_ylim(-1e-4, 1e-4)
+axs[0].set_ylim(-max(abs(np.array(y_end))), max(abs(np.array(y_end))))
+
+plt.pause(4)
+axs[0].clear()
+axs[1].clear()
+
+
 
 # начинаем цикл по времени
 for t in np.arange(2*step, time_end, step):
@@ -104,21 +157,26 @@ for t in np.arange(2*step, time_end, step):
             u_i = u_list[id]
             int_z_i = int_z_list[id]
 
-            period = 2 * pi / w_vnesh
-            if t <= period * 2 / 4:  # ТУТ МЕНЯЕМ ДЛИТЕЛЬНОСТЬ ИМПУЛЬСА
-                T_vnesh_2 = np.pi / w_vnesh / 2
-                expr_1_i = lambda time: P_0_2 * int_z_i * cos(w_sobst_i * time)  # подынтегральная функция для поиска бэтта
-                expr_2_i = lambda time: P_0_2 * int_z_i * sin(w_sobst_i * time)
+            # вынужденные колебания
+            # period = 2 * pi / w_vnesh
+            # if t <= period * 2 / 4:  # ТУТ МЕНЯЕМ ДЛИТЕЛЬНОСТЬ ИМПУЛЬСА
+            #     T_vnesh_2 = np.pi / w_vnesh / 2
+            #     expr_1_i = lambda time: P_0_2 * int_z_i * cos(w_sobst_i * time)  # подынтегральная функция для поиска бэтта
+            #     expr_2_i = lambda time: P_0_2 * int_z_i * sin(w_sobst_i * time)
+            #
+            # else:
+            #     expr_1_i = lambda time: 0
+            #     expr_2_i = lambda time: 0
 
-            else:
-                expr_1_i = lambda time: 0
-                expr_2_i = lambda time: 0
+            # свободные колебания
+            expr_1_i = lambda time: 0
+            expr_2_i = lambda time: 0
 
             list_of_step_integ[id] += [integrate.quad(expr_1_i, t-step, t)[0], integrate.quad(expr_2_i, t-step, t)[0]]
 
-            betta_i[id] = 1 / w_sobst_i * (sin(w_sobst_i * t) * list_of_step_integ[id][0]
+            betta_i[id] = betta0[id] * np.cos(w_sobst_i * t) + betta0_dif[id] / w_sobst_i * np.sin(w_sobst_i * t) + 1 / w_sobst_i * (sin(w_sobst_i * t) * list_of_step_integ[id][0]
                                             - cos(w_sobst_i * t) * list_of_step_integ[id][1])
-            print(betta_i[id])
+            # print(betta_i[id])
             y_i = betta_i[id] * u_list_point[id]  # суммарная функция колебания
 
             y_list += y_i
@@ -128,12 +186,12 @@ for t in np.arange(2*step, time_end, step):
 
 
         # вывод графика колебания конца балки
-        y_end.append(-y_list[-1])
+        y_end.append(y_list[-1])
         list_time.append(t)
         axs[1].plot(list_time, y_end, 'g', linewidth=1)
         axs[1].set_title('Координата конца')
         # axs[1].set_ylim(-4e-4, 4e-4)
-        print("%.5g" % t, "%.5g" % -y_list[-1])
+        print("%.5g" % t, "%.5g" % y_list[-1])
 
 
         # вывод графика колебания балки

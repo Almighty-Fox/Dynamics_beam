@@ -1,7 +1,11 @@
 import numpy as np
 
-print(round(2.1))
-print(round(1.7))
-print(round(2.0))
-print(round(2.5))
-print(round(2.6))
+
+a = np.array([1, 2, 3])
+b = np.array([4, 5, 6])
+c = [4, 5, 6]
+d = [1, 2, 3]
+
+print(a*b)
+print(a*c)
+print(c * d)
