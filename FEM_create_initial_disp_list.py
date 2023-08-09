@@ -13,7 +13,7 @@ def main_body_fun():
     nu = 0.3  # коэффициент Пуассона
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
-    MaxNode = 10 + 1  # количество узлов
+    MaxNode = 32 + 1  # количество узлов
     dl = L / (MaxNode - 1)
     # -------------------------------------------------------
 
@@ -31,14 +31,17 @@ def main_body_fun():
     # с помощью него зададим начальные координаты
     start_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
 
-    start_def_ravel = np.concatenate(start_def).ravel().tolist()
-    start_def_postup = start_def_ravel[::2]
+    start_def_ravel = np.concatenate(start_def).ravel().tolist()  # вектор столбец переводим в строку
+    start_def_postup = start_def_ravel[::2]  # берем только поступательные координаты
 
-    with open(r'write_disp.txt', 'w') as cur_file:
+    file_name = 'initial_disp_{}_nodes.txt'.format(MaxNode)
+    with open(r'./initial_disp/' + file_name, 'w') as cur_file:
         for id, item in enumerate(start_def_postup):
             # write each item on a new line
             cur_file.write("%s\n" % item)
-            print(id)
+            if id % 10 == 0:
+                print('Done {}%'.format(round(id / MaxNode * 100)))
+    print('Done 100%')
 
 
 main_body_fun()

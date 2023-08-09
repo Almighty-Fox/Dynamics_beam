@@ -2,6 +2,8 @@ from class_beam_elements import Class_beam_elements
 from create_global_matrix import *
 import numpy as np
 from matplotlib import pyplot as plt
+from chart_script import *
+import pandas as pd
 
 
 # np.set_printoptions(precision=1)
@@ -15,7 +17,7 @@ def main_body_fun():
     nu = 0.3  # коэффициент Пуассона
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
-    MaxNode = 40 + 1  # количество узлов
+    MaxNode = 20 + 1  # количество узлов
     dl = L / (MaxNode - 1)
     # ---------определяем параметры временного шага----------
     # первая частота балки = 8 Гц, период = 0.125с
@@ -32,15 +34,17 @@ def main_body_fun():
     # формируем матрицы для дифура
     global_stiffness = build_global_stiffness_matrix(elements, MaxNode)  # собираем глобальную МЖ (матрица жесткости)
     global_stiffness = global_stiffness_matrix_with_GU(global_stiffness)  # вносим ГУ в МЖ
+    # print(global_stiffness)
 
     global_mass = build_global_mass_matrix(elements, MaxNode)  # собирает глобальную ММ (матрица масс)
+    # print(global_mass)
 
     global_damping = 0 * global_stiffness + 0 * global_mass  # глобальная МД (матрица демпфирования). Нулевое демпфирование
 
     global_force = np.zeros((2 * MaxNode, 1))  # создаем размер глобального вектора сил
     global_force = create_global_force(global_force, f_ampl=1)  # создаем начальный вектор сил
 
-    eigenvectors_normalized = create_modal_matrix(global_stiffness, global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
+    eigenvalues, eigenvectors_normalized = create_modal_matrix(global_stiffness, global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
 
     # проверочный для МЖ (матрица жесткости) статический расчет
     # с помощью него зададим начальные координаты
@@ -70,8 +74,10 @@ def main_body_fun():
     time_disp_end = [dis_i[-2, 0]]  # запоминаем з-ть коодинаты конца балки
     time_force = [global_force[point_bar, 0]]  # запоминаем з-ть VI силы
     time_lst = [0]  # массив времени
-    en_kin = [0]  # массив кинетической энергии балки
+    en_kin_lst = []  # массив кинетической энергии балки
     modal_vel_time = [0]  # массив суммы квадратов модальный скоростей
+    disp_modes = [0] * (2 * MaxNode)  # массив модальных перемещений
+    vel_modes = [0] * (2 * MaxNode)  # массив модальных скоростей
 
     fig, axs = plt.subplots(3)
     plt.subplots_adjust(wspace=0.4, hspace=0.7)
@@ -89,6 +95,7 @@ def main_body_fun():
     axs[0].clear()
     axs[1].clear()
     axs[2].clear()
+    # main_chart_first_step(L, MaxNode, dis_i, start_def, time_lst, time_disp, time_disp_end, time_force)
 
     # ------- для вычисления силы VI ----------------------
     k_c = 10e-3 * 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
@@ -153,9 +160,9 @@ def main_body_fun():
                          + ' c = ' + str('%.2f' % (t * 1e3)) + ' мс = ' + str('%.2f' % (t * 1e6)) + ' мкс')
             axs[0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r',
                         linewidth=1)  # Положение балки
-            axs[0].plot([L * loc_bar], [dis_i1[point_bar, 0]], 'go', markersize=4)  # Жирная точка середина балки
+            axs[0].plot([L * (point_bar / 2) / (MaxNode - 1)], [dis_i1[point_bar, 0]], 'go', markersize=4)  # Жирная точка середина балки
             axs[0].plot([L], [dis_i1[-2, 0]], 'ko', markersize=4)  # Жирная точка конца балки
-            axs[0].plot([L * loc_bar], [-delta], 'b^', markersize=7)  # Местоположение барьера
+            axs[0].plot([L * (point_bar / 2) / (MaxNode - 1)], [-delta], 'b^', markersize=7)  # Местоположение барьера
             # scale = max(abs(min(time_disp_end)), abs(max(time_disp_end)), delta * 2)  # Масштаб графика формы балки
             scale = start_def[-2][0]  # Масштаб графика формы балки
             axs[0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
@@ -171,27 +178,55 @@ def main_body_fun():
             axs[2].clear()
 
             # ----------- выводим график кинетической энергии --------
+            dis_i_transp = [disp for sublist in dis_i for disp in sublist]
             vel_i_transp = [vel for sublist in vel_i for vel in sublist]
-            vel_i_translational = vel_i_transp[::2]
-            vel_i_rotational = vel_i_transp[1::2]
-            I_inertia_en = 1 / 3 * (ro * dl) * dl**2
-            en_kin.append((ro * dl) / 2 * sum([vel**2 for vel in vel_i_translational]) + I_inertia_en / 2 * sum([vel**2 for vel in vel_i_rotational]))
+            cur_kin_en = 1 / 2 * np.dot(vel_i_transp, np.dot(global_mass, vel_i)) + 1 / 2 * np.dot(dis_i_transp, np.dot(global_stiffness, dis_i))
+            en_kin_lst.append(cur_kin_en)
             plt.figure(2)
-            plt.plot(time_lst, en_kin, color='k', linewidth=1)
+            plt.plot(time_lst[1:], en_kin_lst, color='k', linewidth=1)
+            # # --------------------------------------------------------
+
+            # # ----------- выводим график модальный скоростей --------
+            # modal_vel_i = np.matmul(np.linalg.inv(eigenvectors_normalized), vel_i)
+            # modal_vel_i_transp = [modal_vel for sublist in modal_vel_i for modal_vel in sublist]
+            # # modal_vel_time.append(sum(list(map(lambda x: x**2, modal_vel_i_transp))) / 2)
+            # modal_vel_time.append(modal_vel_i_transp[9])
+            # plt.figure(3)
+            # plt.plot(time_lst, modal_vel_time, color='k', linewidth=1)
+            # # --------------------------------------------------------
+
+            # ------заполняем массив амплитудами перемещений рассматриваемых мод------------
+            modal_dis_i = np.matmul(np.linalg.inv(eigenvectors_normalized), dis_i)
+            modal_dis_i_transp = [modal_dis for sublist in modal_dis_i for modal_dis in sublist]
+            for jj in range(len(modal_dis_i_transp)):
+                disp_modes[jj] = max(disp_modes[jj], modal_dis_i_transp[jj])
             # --------------------------------------------------------
-            # ----------- выводим график модальный скоростей --------
+            # ------ заполняем массив квадратами амплитуд модальных скоростей ------------
             modal_vel_i = np.matmul(np.linalg.inv(eigenvectors_normalized), vel_i)
             modal_vel_i_transp = [modal_vel for sublist in modal_vel_i for modal_vel in sublist]
-            # modal_vel_time.append(sum(list(map(lambda x: x**2, modal_vel_i_transp))) / 2)
-            modal_vel_time.append(modal_vel_i_transp[2])
-            plt.figure(3)
-            plt.plot(time_lst, modal_vel_time, color='k', linewidth=1)
+            for jj in range(len(modal_vel_i_transp)):
+                vel_modes[jj] = max(vel_modes[jj], modal_vel_i_transp[jj] ** 2)
             # --------------------------------------------------------
+            # # -------- строим график распределения квадратов модальных скоростей по модам -------
+            # plt.figure(3)
+            # df = pd.DataFrame(vel_modes, columns=['origin'], index=range(1, len(vel_modes) + 1))
+            # df.origin.plot.bar(rot=0, log=True)
+            # # --------------------------------------------------------
 
             if 10 * dis_i[point_bar, 0] <= -delta:
                 dt = 1e-4
             else:
                 dt = 1e-4
+
+            # каждые сколько-то шагов записываем значения амплитуд колебаний на рассматриваемый частотах в файл
+            if len(time_lst) % 10 == 0:
+                file_name = 'write_ampl_modes_{}_nodes.txt'.format(MaxNode)
+                with open(r'./initial_disp/' + file_name, 'w') as cur_file:
+                    cur_file.write(str(disp_modes))
+
+                file_name = 'write_ampl_vel_modes_{}_nodes.txt'.format(MaxNode)
+                with open(r'./initial_disp/' + file_name, 'w') as cur_file:
+                    cur_file.write(str(vel_modes))
 
     except KeyboardInterrupt:
         return

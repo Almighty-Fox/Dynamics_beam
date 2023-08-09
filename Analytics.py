@@ -37,7 +37,7 @@ F = a * b
 Jx = a * b**3 / 12
 P_0 = 100
 
-point = 100 + 1  # количество элементов балки
+point = 40 + 1  # количество элементов балки
 
 
 w_sobst = (1.875 / l)**2 * np.power((E * Jx / ro / F), (1/2))
@@ -54,6 +54,8 @@ y_end = []
 alpha_l_list = np.array([1.8864, 4.6941, 7.8548, 10.9955, 14.1372, 17.2788])
 # alpha_l_list = np.array([1.8864])
 # alpha_l_list = np.array([1.8864, 4.6941])
+amplitude_mode_oscillations = [0] * len(alpha_l_list)  # Лист амплитуд колебаний мод
+kin_en_mode_oscillations = [0] * len(alpha_l_list)  # Лист максимальных кин. эн. мод
 
 step_integ = np.array([0., 0.])  # тут будем хранить значения двух интегралов
 list_of_step_integ = np.array([step_integ for ii in range(len(alpha_l_list))])  # тут будет массив тех значений для всех собств частот
@@ -72,14 +74,19 @@ for id, alpha_l in enumerate(alpha_l_list):  # для каждой собств�
 # Начальные условия учитываются в betta0 and betta0_dif
 RRR = ro * F / E / Jx
 
+# ------------------------------------------------
 disp0 = u_list_point[0] / 10000  # выбираем начальное перемещение в точности по собственной форме
-# with open('write_disp.txt', 'r') as cur_file:  # начальное перемещение по точкам из стат. расчета МКЭ (FEM_create_initial_disp_list.py)
+
+# # начальное перемещение по точкам из стат. расчета МКЭ (FEM_create_initial_disp_list.py)
+# file_name = 'initial_disp_{}_nodes.txt'.format(point)
+# with open(r'./initial_disp/' + file_name, 'r') as cur_file:
 #     disp0 = []
 #     for line in cur_file:
 #         line = line.strip()
 #         disp0.append(float(line))
 # disp0 = np.array(disp0)
 # print(len(disp0))
+# ------------------------------------------------
 
 disp0_dif = np.zeros(point, dtype=float)
 dl = l / (point - 1)
@@ -117,18 +124,19 @@ for id in range(len(alpha_l_list)):  # для первого шага по вр�
     y_list += y_i
 
 fig, axs = plt.subplots(2)  # создаем саб плот из 2 графиков
-plt.subplots_adjust(wspace=0.6, hspace=0.4)
+plt.subplots_adjust(wspace=0.6, hspace=0.5)
 
 
 # fig.suptitle('Time = ' + str("%.5g" % t))
-fig.suptitle('Time = ' + str("%.4f" % step))
+fig.suptitle('Time = ' + str("%.4f" % step) + ' sec')
 
 
 # вывод графика колебания конца балки
 y_end.append(y_list[-1])
 list_time.append(step)
 axs[1].plot(list_time, y_end, 'g', linewidth=1)
-axs[1].set_title('Координата конца')
+axs[1].set_title('Beam end coordinate')
+axs[1].set(xlabel='time, sec', ylabel='displacement, m')
 # axs[1].set_ylim(-4e-4, 4e-4)
 print("%.5g" % step, "%.5g" % y_list[-1])
 
@@ -136,8 +144,9 @@ print("%.5g" % step, "%.5g" % y_list[-1])
 # вывод графика колебания балки
 
 axs[0].plot(np.linspace(0, l, point), y_list, 'r', linewidth=1)
-axs[0].set_title('Балка')
+axs[0].set_title('Beam shape')
 axs[0].set_xlim(0, l)
+axs[0].set(xlabel='beam, m', ylabel='displacement, m')
 # axs[0].set_ylim(-1e-4, 1e-4)
 axs[0].set_ylim(-max(abs(np.array(y_end))), max(abs(np.array(y_end))))
 
@@ -179,17 +188,20 @@ for t in np.arange(2*step, time_end, step):
             # print(betta_i[id])
             y_i = betta_i[id] * u_list_point[id]  # суммарная функция колебания
 
+            amplitude_mode_oscillations[id] = max(amplitude_mode_oscillations[id], max(map(abs, y_i)))  # пишем максимальную амплитуду колебаний текущей моды
+
             y_list += y_i
 
         # fig.suptitle('Time = ' + str("%.5g" % t))
-        fig.suptitle('Time = ' + str("%.4f" % t))
+        fig.suptitle('Time = ' + str("%.4f" % t) + ' sec')
 
 
         # вывод графика колебания конца балки
         y_end.append(y_list[-1])
         list_time.append(t)
         axs[1].plot(list_time, y_end, 'g', linewidth=1)
-        axs[1].set_title('Координата конца')
+        axs[1].set_title('Beam end coordinate')
+        axs[1].set(xlabel='time, sec', ylabel='displacement, m')
         # axs[1].set_ylim(-4e-4, 4e-4)
         print("%.5g" % t, "%.5g" % y_list[-1])
 
@@ -197,8 +209,9 @@ for t in np.arange(2*step, time_end, step):
         # вывод графика колебания балки
 
         axs[0].plot(np.linspace(0, l, point), y_list, 'r', linewidth=1)
-        axs[0].set_title('Балка')
+        axs[0].set_title('Beam shape')
         axs[0].set_xlim(0, l)
+        axs[0].set(xlabel='beam, m', ylabel='displacement, m')
         # axs[0].set_ylim(-1e-4, 1e-4)
         axs[0].set_ylim(-max(abs(np.array(y_end))), max(abs(np.array(y_end))))
 
@@ -208,6 +221,10 @@ for t in np.arange(2*step, time_end, step):
 
         # print("--- %s seconds ---" % (time.time() - start_time))  # время одного шага цикла
         # print(time.time() - start_time)
+        print(amplitude_mode_oscillations)
 
     except:
         break
+
+print('Amplitude of mode oscillations')
+print(amplitude_mode_oscillations)

@@ -84,4 +84,9 @@ def create_modal_matrix(K, M):
     print("Mass-Orthonormality:")
     print(mass_orthonormality)
 
-    return eigenvectors_normalized
+    # Verify stiffness-orthonormality of eigenvectors
+    stiffness_orthonormality = np.dot(eigenvectors_normalized.T, np.dot(K, eigenvectors_normalized))
+    print("Stiffness-Orthonormality:")
+    print(stiffness_orthonormality)
+
+    return eigenvalues, eigenvectors_normalized
