@@ -78,23 +78,26 @@ def main_body_fun():
     modal_vel_time = [0]  # массив суммы квадратов модальный скоростей
     disp_modes = [0] * (2 * MaxNode)  # массив модальных перемещений
     vel_modes = [0] * (2 * MaxNode)  # массив модальных скоростей
+    full_en_mode = [0] * (2 * MaxNode)  # массив полной энергии мод
+    step_plot = 200  # каждый 200ый шаг выводим графики
+    number_mode_plot = 10  # количество мод, которое выводим на графиках
 
-    fig, axs = plt.subplots(3)
+    fig, axs = plt.subplots(3, 2)
     plt.subplots_adjust(wspace=0.4, hspace=0.7)
-    fig.suptitle('ГРАФИКИ')
-    axs[0].set_title('Форма балки')
-    axs[1].set_title('Временная з-ть узла балки. \n Черная - конец, зеленая - середина.', fontsize=10)
-    axs[2].set_title('VI force')
-    axs[0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
+    # fig.suptitle('ГРАФИКИ')
+    axs[0][0].set_title('Beam shape')
+    axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=10)
+    axs[2][0].set_title('VI force')
+    axs[0][0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
     scale = start_def[-2][0]  # Масштаб графика формы балки
-    axs[0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
-    axs[1].plot(time_lst, time_disp, 'g', linewidth=1)
-    axs[1].plot(time_lst, time_disp_end, 'k', linewidth=1)
-    axs[2].plot(time_lst, time_force, 'k', linewidth=1)
-    plt.pause(2)
-    axs[0].clear()
-    axs[1].clear()
-    axs[2].clear()
+    axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
+    axs[1][0].plot(time_lst, time_disp, 'g', linewidth=1)
+    axs[1][0].plot(time_lst, time_disp_end, 'k', linewidth=1)
+    axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)
+    plt.pause(1)
+    axs[0][0].clear()
+    axs[1][0].clear()
+    axs[2][0].clear()
     # main_chart_first_step(L, MaxNode, dis_i, start_def, time_lst, time_disp, time_disp_end, time_force)
 
     # ------- для вычисления силы VI ----------------------
@@ -112,7 +115,8 @@ def main_body_fun():
 
             MCK = global_mass + gamma * dt * global_damping + beta * dt ** 2 * global_stiffness
 
-            print('Time = ', str(t))
+            # print('Time = ', str(t))
+
             # if True:
             # if t < 2e-3:
             # # if t < dt * 100:
@@ -120,12 +124,13 @@ def main_body_fun():
             #     # f_ampl = 1
             # else:
             #     f_ampl = 0
+
             global_force = create_global_force(global_force, f_ampl=0)
             global_force[point_bar, 0] = 0
 
             if -dis_i[point_bar, 0] - delta >= 0:
                 # delta = -dis_i_before * 0.999  # динамически двигаем барьер
-                print('Действует сила')
+                # print('Действует сила')
                 global_force = create_VI_force(global_force, point_bar, delta, dis_i[point_bar, 0], vel_i[point_bar, 0],
                                                vel_i_before, k_c, restitution=0.7)
             else:
@@ -153,37 +158,43 @@ def main_body_fun():
             time_force.append(global_force[point_bar, 0])
             time_lst.append(t)
 
-            axs[0].set_title('Форма балки')
-            axs[1].set_title('Временная з-ть узла балки. \n Черная - конец, зеленая - середина.', fontsize=10)
-            axs[2].set_title('VI force')
-            fig.suptitle('Время = ' + str('%.2f' % t)
-                         + ' c = ' + str('%.2f' % (t * 1e3)) + ' мс = ' + str('%.2f' % (t * 1e6)) + ' мкс')
-            axs[0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r',
-                        linewidth=1)  # Положение балки
-            axs[0].plot([L * (point_bar / 2) / (MaxNode - 1)], [dis_i1[point_bar, 0]], 'go', markersize=4)  # Жирная точка середина балки
-            axs[0].plot([L], [dis_i1[-2, 0]], 'ko', markersize=4)  # Жирная точка конца балки
-            axs[0].plot([L * (point_bar / 2) / (MaxNode - 1)], [-delta], 'b^', markersize=7)  # Местоположение барьера
-            # scale = max(abs(min(time_disp_end)), abs(max(time_disp_end)), delta * 2)  # Масштаб графика формы балки
-            scale = start_def[-2][0]  # Масштаб графика формы балки
-            axs[0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
+            if len(time_lst) % step_plot == 0:
+                axs[0][0].set_title('Beam shape')
+                axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=10)
+                axs[2][0].set_title('VI force')
+                fig.suptitle('Time = ' + str('%.2f' % t)
+                             + ' s = ' + str('%.2f' % (t * 1e3)) + ' ms = ' + str('%.2f' % (t * 1e6)) + ' µs')
+                axs[0][0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r',
+                            linewidth=1)  # Положение балки
+                axs[0][0].plot([L * (point_bar / 2) / (MaxNode - 1)], [dis_i1[point_bar, 0]], 'go', markersize=4)  # Жирная точка середина балки
+                axs[0][0].plot([L], [dis_i1[-2, 0]], 'ko', markersize=4)  # Жирная точка конца балки
+                axs[0][0].plot([L * (point_bar / 2) / (MaxNode - 1)], [-delta], 'b^', markersize=7)  # Местоположение барьера
+                # scale = max(abs(min(time_disp_end)), abs(max(time_disp_end)), delta * 2)  # Масштаб графика формы балки
+                scale = start_def[-2][0]  # Масштаб графика формы балки
+                axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
 
-            axs[1].plot(time_lst, time_disp, color='g', linewidth=1)  # временная з-ть середины балки
-            axs[1].plot(time_lst, time_disp_end, color='k', linewidth=1)  # временная з-ть конца балки
-            axs[1].plot(time_lst, [-delta] * len(time_lst), 'r--', linewidth=1)  # барьер
+                axs[1][0].plot(time_lst, time_disp, color='g', linewidth=1)  # временная з-ть середины балки
+                axs[1][0].plot(time_lst, time_disp_end, color='k', linewidth=1)  # временная з-ть конца балки
+                axs[1][0].plot(time_lst, [-delta] * len(time_lst), 'r--', linewidth=1)  # барьер
 
-            axs[2].plot(time_lst, time_force, 'k', linewidth=1)  # временная з-ть силы VI
-            plt.pause(0.0001)
-            axs[0].clear()
-            axs[1].clear()
-            axs[2].clear()
+                axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)  # временная з-ть силы VI
+                # plt.pause(0.000001)
+                # axs[0][0].clear()
+                # axs[1][0].clear()
+                # axs[2][0].clear()
 
-            # ----------- выводим график кинетической энергии --------
+            # ----------- выводим график полной энергии --------
             dis_i_transp = [disp for sublist in dis_i for disp in sublist]
             vel_i_transp = [vel for sublist in vel_i for vel in sublist]
             cur_kin_en = 1 / 2 * np.dot(vel_i_transp, np.dot(global_mass, vel_i)) + 1 / 2 * np.dot(dis_i_transp, np.dot(global_stiffness, dis_i))
             en_kin_lst.append(cur_kin_en)
-            plt.figure(2)
-            plt.plot(time_lst[1:], en_kin_lst, color='k', linewidth=1)
+            if len(time_lst) % step_plot == 0:
+                # plt.figure(2)
+
+                # plt.plot(time_lst[1:], en_kin_lst, color='k', linewidth=1)
+                axs[0][1].set_title('Total energy')
+                axs[0][1].plot(time_lst[1:], en_kin_lst, color='k', linewidth=1)
+                # axs[0][1].clear()
             # # --------------------------------------------------------
 
             # # ----------- выводим график модальный скоростей --------
@@ -198,35 +209,63 @@ def main_body_fun():
             # ------заполняем массив амплитудами перемещений рассматриваемых мод------------
             modal_dis_i = np.matmul(np.linalg.inv(eigenvectors_normalized), dis_i)
             modal_dis_i_transp = [modal_dis for sublist in modal_dis_i for modal_dis in sublist]
-            for jj in range(len(modal_dis_i_transp)):
-                disp_modes[jj] = max(disp_modes[jj], modal_dis_i_transp[jj])
+            # for jj in range(len(modal_dis_i_transp)):
+            #     disp_modes[jj] = max(disp_modes[jj], modal_dis_i_transp[jj])
             # --------------------------------------------------------
             # ------ заполняем массив квадратами амплитуд модальных скоростей ------------
             modal_vel_i = np.matmul(np.linalg.inv(eigenvectors_normalized), vel_i)
             modal_vel_i_transp = [modal_vel for sublist in modal_vel_i for modal_vel in sublist]
-            for jj in range(len(modal_vel_i_transp)):
-                vel_modes[jj] = max(vel_modes[jj], modal_vel_i_transp[jj] ** 2)
+            # for jj in range(len(modal_vel_i_transp)):
+            #     vel_modes[jj] = max(vel_modes[jj], modal_vel_i_transp[jj] ** 2)
+            # --------------------------------------------------------
+
+            # ------ заполняем массив полной энергии мод ------------
+            full_en_mode = 1 / 2 * np.array(modal_vel_i_transp) ** 2 + 1 / 2 * eigenvalues * np.array(modal_dis_i_transp) ** 2
+            # plt.figure(3)
+            if len(time_lst) % step_plot == 0:
+                df = pd.DataFrame(full_en_mode, columns=['origin'], index=range(1, len(modal_vel_i_transp) + 1))
+                # df.origin.plot.bar(rot=0, log=True)
+                # df.origin[:20].plot.bar(rot=0)
+                axs[1][1].set_title('Energy distribution over modes')
+                axs[1][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot])
+                axs[1][1].axis([0, df.index[number_mode_plot], 0, 1e-3])
+                axs[1][1].set_xticks(np.arange(1, number_mode_plot + 1))
+
+                axs[2][1].set_title('Log distribution of energy over modes')
+                axs[2][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot], log=True)
+                axs[2][1].set_xticks(np.arange(1, number_mode_plot + 1))
+
+                plt.pause(0.000001)
+                axs[1][1].clear()
+                axs[2][1].clear()
+
+                axs[0][0].clear()
+                axs[1][0].clear()
+                axs[2][0].clear()
+
+                axs[0][1].clear()
+                # print(df.origin[:20])
             # --------------------------------------------------------
             # # -------- строим график распределения квадратов модальных скоростей по модам -------
-            # plt.figure(3)
+            # plt.figure(4)
             # df = pd.DataFrame(vel_modes, columns=['origin'], index=range(1, len(vel_modes) + 1))
             # df.origin.plot.bar(rot=0, log=True)
             # # --------------------------------------------------------
 
             if 10 * dis_i[point_bar, 0] <= -delta:
-                dt = 1e-4
+                dt = 1e-6  # если рядом с барьером
             else:
-                dt = 1e-4
+                dt = 1e-5
 
-            # каждые сколько-то шагов записываем значения амплитуд колебаний на рассматриваемый частотах в файл
-            if len(time_lst) % 10 == 0:
-                file_name = 'write_ampl_modes_{}_nodes.txt'.format(MaxNode)
-                with open(r'./initial_disp/' + file_name, 'w') as cur_file:
-                    cur_file.write(str(disp_modes))
-
-                file_name = 'write_ampl_vel_modes_{}_nodes.txt'.format(MaxNode)
-                with open(r'./initial_disp/' + file_name, 'w') as cur_file:
-                    cur_file.write(str(vel_modes))
+            # # каждые сколько-то шагов записываем значения амплитуд колебаний на рассматриваемый частотах в файл
+            # if len(time_lst) % 10 == 0:
+            #     file_name = 'write_ampl_modes_{}_nodes.txt'.format(MaxNode)
+            #     with open(r'./initial_disp/' + file_name, 'w') as cur_file:
+            #         cur_file.write(str(disp_modes))
+            #
+            #     file_name = 'write_ampl_vel_modes_{}_nodes.txt'.format(MaxNode)
+            #     with open(r'./initial_disp/' + file_name, 'w') as cur_file:
+            #         cur_file.write(str(vel_modes))
 
     except KeyboardInterrupt:
         return

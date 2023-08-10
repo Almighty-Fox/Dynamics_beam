@@ -55,10 +55,12 @@ def create_VI_force(global_force, point_bar, delta, dis_i_bar, vel_i_bar, vel_i_
     # VI_force = k_c * plus_slag**(3/2) * (1 + 3 * (1 - restitution) / 2 / vel_i_before * vel_i_bar)
     VI_force = k_c * plus_slag ** (3 / 2)
     # VI_force = 0
-    print('vel_i_before = {}'.format(vel_i_before))
-    print('vel_i[(maxnode // 2) * 2, 0] = {}'.format(vel_i_bar))
-    print('plus_slag**(3/2) = {}'.format(plus_slag**(3/2)))
-    print('VI_force = {}'.format(VI_force))
+
+    # print('vel_i_before = {}'.format(vel_i_before))
+    # print('vel_i[(maxnode // 2) * 2, 0] = {}'.format(vel_i_bar))
+    # print('plus_slag**(3/2) = {}'.format(plus_slag**(3/2)))
+    # print('VI_force = {}'.format(VI_force))
+
     global_force[point_bar, 0] = VI_force
 
     return global_force
