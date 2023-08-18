@@ -4,10 +4,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 from chart_script import *
 import pandas as pd
+import os
 
 
 # np.set_printoptions(precision=1)
-def main_body_fun():
+def main_body_fun(loc_bar=0.9):
     # ---------определяем параметры материала образца----------
     a = 10e-3  # сторона квадратного сечения
     S = a * a  # площадь сечения балки
@@ -21,7 +22,7 @@ def main_body_fun():
     dl = L / (MaxNode - 1)
     # ---------определяем параметры временного шага----------
     # первая частота балки = 8 Гц, период = 0.125с
-    dt = 1e-4  # шаг по времени
+    dt = 2e-6  # шаг по времени
     t_end = 200  # исследуемый интервал времени
     # ---------определяем параметры метода Ньюмарка----------
     gamma = 0.5
@@ -63,7 +64,7 @@ def main_body_fun():
                       (global_force - np.matmul(global_damping, vel_i) - np.matmul(global_stiffness, dis_i)))
 
     # ------------------------------ параметры барьера ----------------------------------
-    loc_bar = 0.6  # местоположение барьера вдоль оси балки (от 0 до 1)
+    # loc_bar = 0.9  # местоположение барьера вдоль оси балки (от 0 до 1)
     point_bar = round((MaxNode - 1) * loc_bar) * 2  # номер эелемента в глобальном векторе сил, на который действует сила VI
     # delta = 5e-7  # зазор
     delta = start_def[point_bar, 0] / 10  # зазор
@@ -79,7 +80,7 @@ def main_body_fun():
     disp_modes = [0] * (2 * MaxNode)  # массив модальных перемещений
     vel_modes = [0] * (2 * MaxNode)  # массив модальных скоростей
     full_en_mode = [0] * (2 * MaxNode)  # массив полной энергии мод
-    step_plot = 200  # каждый 200ый шаг выводим графики
+    step_plot = 1000  # каждый 200ый шаг выводим графики
     number_mode_plot = 10  # количество мод, которое выводим на графиках
 
     fig, axs = plt.subplots(3, 2)
@@ -108,7 +109,7 @@ def main_body_fun():
     # -------------------------------------------------------------------------------------
     # начинаем цикл по времени
     t = 0
-    # t_end = 0.07839
+    t_end = 0.5
     try:
         while t < t_end:
             t += dt
@@ -162,8 +163,10 @@ def main_body_fun():
                 axs[0][0].set_title('Beam shape')
                 axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=10)
                 axs[2][0].set_title('VI force')
-                fig.suptitle('Time = ' + str('%.2f' % t)
-                             + ' s = ' + str('%.2f' % (t * 1e3)) + ' ms = ' + str('%.2f' % (t * 1e6)) + ' µs')
+                # fig.suptitle('Time = ' + str('%.2f' % t)
+                #              + ' s = ' + str('%.2f' % (t * 1e3)) + ' ms = ' + str('%.2f' % (t * 1e6)) + ' µs')
+                fig.suptitle('Time=' + str('%.2f' % t)
+                             + 's=' + str('%.2f' % (t * 1e3)) + 'ms')
                 axs[0][0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r',
                             linewidth=1)  # Положение балки
                 axs[0][0].plot([L * (point_bar / 2) / (MaxNode - 1)], [dis_i1[point_bar, 0]], 'go', markersize=4)  # Жирная точка середина балки
@@ -224,16 +227,26 @@ def main_body_fun():
             # plt.figure(3)
             if len(time_lst) % step_plot == 0:
                 df = pd.DataFrame(full_en_mode, columns=['origin'], index=range(1, len(modal_vel_i_transp) + 1))
-                # df.origin.plot.bar(rot=0, log=True)
-                # df.origin[:20].plot.bar(rot=0)
-                axs[1][1].set_title('Energy distribution over modes')
-                axs[1][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot])
-                axs[1][1].axis([0, df.index[number_mode_plot], 0, 1e-3])
-                axs[1][1].set_xticks(np.arange(1, number_mode_plot + 1))
+                axs[1][1].set_title('Energy distribution over modes\nMax energy = {} %'.format(round(max(df.origin[:number_mode_plot]) / sum(df.origin[:number_mode_plot]) * 100)), fontsize=10)
+                # axs[1][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot])
+                axs[1][1].bar(np.arange(1, number_mode_plot - 1), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 6, 7, 8, 9]])
+                # axs[1][1].axis([0, df.index[number_mode_plot], 0, 1e-3])
+                # axs[1][1].axis([0, df.index[number_mode_plot] - 2, 0, 1e-3])
+                # axs[1][1].set_xticks(np.arange(1, number_mode_plot + 1))
+                axs[1][1].set_xticks(np.arange(1, number_mode_plot - 1))
 
-                axs[2][1].set_title('Log distribution of energy over modes')
-                axs[2][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot], log=True)
-                axs[2][1].set_xticks(np.arange(1, number_mode_plot + 1))
+                axs[2][1].set_title('Log distribution of energy over modes', fontsize=10)
+                # axs[2][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot], log=True)
+                axs[2][1].bar(np.arange(1, number_mode_plot - 1), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 6, 7, 8, 9]], log=True)
+                # axs[2][1].set_xticks(np.arange(1, number_mode_plot + 1))
+                axs[2][1].set_xticks(np.arange(1, number_mode_plot - 1))
+
+                if len(time_lst) % (step_plot * 20) == 0:  # сохраняем график как картинку
+                    # file_name = 'loc_{}_time_{}.pdf'.format(loc_bar, str('%.2f' % t))
+                    file_name = 'time_{}.pdf'.format(str('%.2f' % t))
+                    # path = './plots/' + file_name
+                    path = './plots/location_{}/'.format(round(loc_bar, 1)) + file_name
+                    plt.savefig(path, bbox_inches='tight')
 
                 plt.pause(0.000001)
                 axs[1][1].clear()
@@ -253,9 +266,9 @@ def main_body_fun():
             # # --------------------------------------------------------
 
             if 10 * dis_i[point_bar, 0] <= -delta:
-                dt = 1e-6  # если рядом с барьером
+                dt = 2e-7  # если рядом с барьером
             else:
-                dt = 1e-5
+                dt = 2e-6
 
             # # каждые сколько-то шагов записываем значения амплитуд колебаний на рассматриваемый частотах в файл
             # if len(time_lst) % 10 == 0:
@@ -267,8 +280,20 @@ def main_body_fun():
             #     with open(r'./initial_disp/' + file_name, 'w') as cur_file:
             #         cur_file.write(str(vel_modes))
 
+
     except KeyboardInterrupt:
         return
 
 
-main_body_fun()
+if __name__ == '__main__':
+    # loc_bar_list = np.arange(0.1, 1, 0.1)
+    loc_bar_list = np.arange(0.3, 1, 0.1)
+    for loc_bar in loc_bar_list:
+        path = './plots/location_{}/'.format(round(loc_bar, 1))
+        os.mkdir(path)
+
+        with open(path + 'readme.txt', 'w') as f:
+            f.write('Close to the barrier 2e-7\nFar from the berrier 2e-6\nForce 1')
+
+        main_body_fun(loc_bar=loc_bar)
+        plt.close()
