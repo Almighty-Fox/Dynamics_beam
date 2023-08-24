@@ -85,7 +85,7 @@ def main_body_fun(loc_bar=0.9):
     disp_modes = [0] * (2 * MaxNode)  # массив модальных перемещений
     vel_modes = [0] * (2 * MaxNode)  # массив модальных скоростей
     full_en_mode = [0] * (2 * MaxNode)  # массив полной энергии мод
-    step_plot = 1000  # каждый 200ый шаг выводим графики
+    step_plot = 100  # каждый 200ый шаг выводим графики
     number_mode_plot = 10  # количество мод, которое выводим на графиках
 
     fig, axs = plt.subplots(3, 2)
@@ -123,26 +123,16 @@ def main_body_fun(loc_bar=0.9):
 
             # print('Time = ', str(t))
 
-            # if True:
-            # if t < 2e-3:
-            # # if t < dt * 100:
-            #     f_ampl = -600 * np.sin(2 * np.pi * 5 * t)
-            #     # f_ampl = 1
-            # else:
-            #     f_ampl = 0
-
             global_force = create_global_force(global_force, f_ampl=0)
             global_force[point_bar, 0] = 0
 
             if -dis_i[point_bar, 0] - delta >= 0:
-                # delta = -dis_i_before * 0.999  # динамически двигаем барьер
                 # print('Действует сила')
-                global_force = create_VI_force(global_force, point_bar, delta, dis_i[point_bar, 0], vel_i[point_bar, 0],
-                                               vel_i_before, k_c, restitution=0.7)
-            else:
-                # delta = delta_original
-                vel_i_before = vel_i[point_bar, 0]
-                dis_i_before = dis_i[point_bar, 0]
+                # global_force = create_VI_force(global_force, point_bar, delta, dis_i[point_bar, 0], vel_i[point_bar, 0],
+                #                                vel_i_before, k_c, restitution=0.7)
+                if vel_i[point_bar, 0] < 0:  # если балка пытается пересечь барьер
+                    vel_i[point_bar, 0] = 0  # то обнуляем скорость точки, напротив барьера
+                    # acc_i[point_bar, 0] = 0
 
             # print(vel_i[MaxNode+1, 0])
             vel_i1_pred = vel_i + (1 - gamma) * dt * acc_i
@@ -179,7 +169,8 @@ def main_body_fun(loc_bar=0.9):
                 axs[0][0].plot([L * (point_bar / 2) / (MaxNode - 1)], [-delta], 'b^', markersize=7)  # Местоположение барьера
                 # scale = max(abs(min(time_disp_end)), abs(max(time_disp_end)), delta * 2)  # Масштаб графика формы балки
                 scale = start_def[-2][0]  # Масштаб графика формы балки
-                axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
+                # axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
+                axs[0][0].axis([0, L * 1.1, -1.3e-4, 1e-4])  # устанавливаем диапозон осей
 
                 axs[1][0].plot(time_lst, time_disp, color='g', linewidth=1)  # временная з-ть середины балки
                 axs[1][0].plot(time_lst, time_disp_end, color='k', linewidth=1)  # временная з-ть конца балки
@@ -271,9 +262,9 @@ def main_body_fun(loc_bar=0.9):
             # # --------------------------------------------------------
 
             if 10 * dis_i[point_bar, 0] <= -delta:
-                dt = 2e-7  # если рядом с барьером
+                dt = 8e-7  # если рядом с барьером
             else:
-                dt = 2e-6
+                dt = 8e-6
 
             # # каждые сколько-то шагов записываем значения амплитуд колебаний на рассматриваемый частотах в файл
             # if len(time_lst) % 10 == 0:
