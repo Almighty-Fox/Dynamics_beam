@@ -16,7 +16,7 @@ nu = 0.3  # коэффициент Пуассона
 k = np.arange(0.0001, 15, 0.0001)  # лист значений каппы - замененная частота
 # k_step = 0.000001
 # k = np.concatenate((np.arange(2.4, 2.43, k_step), np.arange(3.1, 3.2, k_step), np.arange(5.55, 5.6, k_step)))
-l1 = 0.4  # местоположение барьера
+l1 = 0.2  # местоположение барьера
 l2 = 1  # длина балки
 
 # задаем константы, полученные с помощью аналитики
@@ -296,6 +296,16 @@ plt.grid()
 
 # то есть мы получили форму балки в момент отрыва балки от барьера
 # эту форму раскладываем по собственным формам уже обычной консольно-закрепленной балки
+
+#
+beam_velocity_zero_force = sum([v1v2[ii] * omega_lst[ii] * np.cos(omega_lst[ii] * time_Q0) for ii in range(len(roots_my))])
+
+#
+file_name = 'initial_disp_after_VI_loc_2.txt'
+with open(r'./initial_disp/' + file_name, 'w') as cur_file:
+    cur_file.write('\n'.join(str(i) for i in beam_shape_zero_force))
+    cur_file.write('\n99999\n')
+    cur_file.write('\n'.join(str(i) for i in beam_velocity_zero_force))
 
 
 plt.show()
