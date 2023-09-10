@@ -13,10 +13,10 @@ ro = 7850  # плотность
 E = 2e11  # модуль Юнга
 nu = 0.3  # коэффициент Пуассона
 # ---------определяем параметры каппы, местоположения барьера и длины балки----------
-k = np.arange(0.0001, 20, 0.0001)  # лист значений каппы - замененная частота
+k = np.arange(0.0001, 15, 0.0001)  # лист значений каппы - замененная частота
 # k_step = 0.000001
 # k = np.concatenate((np.arange(2.4, 2.43, k_step), np.arange(3.1, 3.2, k_step), np.arange(5.55, 5.6, k_step)))
-l1 = 0.5  # местоположение барьера
+l1 = 0.4  # местоположение барьера
 l2 = 1  # длина балки
 
 # задаем константы, полученные с помощью аналитики
@@ -112,12 +112,13 @@ def find_aplha1(k):
           (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
           (np.cos(k*x)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*x)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*x))) ** 2
     v1_2_integral = integrate.quad(v1_2_fun, 0, l1)[0]
-    print('Integral v1 square= ', str(v1_2_integral))
+    # print('Integral v1 square= ', str(v1_2_integral))
     v2_2_integral = integrate.quad(v2_2_fun, l1, l2)[0]
-    print('Integral v2 square = ', str(v2_2_integral))
+    # print('Integral v2 square = ', str(v2_2_integral))
     alpha1_2 = E * I_inertia / ro / S / (v1_2_integral + (A1_fun(k) / B1_fun(k))**2 * v2_2_integral)
-    print('beta1 ', str((A1_fun(k) / B1_fun(k))**2 * v2_2_integral))
+    # print('beta1 ', str((A1_fun(k) / B1_fun(k))**2 * v2_2_integral))
     alpha1 = alpha1_2 ** (1/2)
+    # alpha1 = alpha1 / np.sqrt(2.12e2)  # подгониан
 
     return alpha1
 
@@ -125,10 +126,9 @@ def find_aplha1(k):
 v1 = []  # лист форм левой части балки при различных частотах
 v2 = []  # тоже для правой части
 v1v2 = []  # форма всей балки
-x_step = 1e-5
+x_step = 1e-4
 for i in range(len(roots_my)):
-    k = roots_my[i]
-    # k = roots_my[2]  # переобозначаем каппу, вместо листа делаем скаляром
+    k = roots_my[i]  # переобозначаем каппу, вместо листа делаем скаляром
     # alpha1 = find_aplha1(k)  # ищем альфа по нормализации
     alpha1 = 1
     # print(alpha1)
@@ -142,10 +142,11 @@ for i in range(len(roots_my)):
           (np.cos(k*x)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*x)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*x))))
 
     v1v2.append(np.concatenate((v1[i], v2[i])))  # форма всей балки как сумма формы левой и правой частей
+    x = np.concatenate((np.arange(0, l1, x_step), np.arange(l1, l2, x_step)))
 
     # plt.figure()
     # # plt.plot(list(np.arange(0, l1, x_step)) + list(np.arange(l1, l2, x_step)), list(v1[i]) + list(v2[i]), linewidth=2)
-    # plt.plot(np.arange(0, l2, x_step), v1v2[i], linewidth=2)
+    # plt.plot(x, v1v2[i], linewidth=2)
     # plt.plot([l1], [0], 'ro', linewidth=2)
     # plt.grid()
     # # plt.plot(np.arange(0, l1, 0.0001), v1)
@@ -181,8 +182,9 @@ for row in check_orthogonal:
     print(row_str)
 
 # нахождение поля скоростей консольно-закрепленной балки в момент до удара о барьер
-x = np.arange(0, l2, x_step)
+x = np.concatenate((np.arange(0, l1, x_step), np.arange(l1, l2, x_step)))
 al_l_1 = 1.8864
+# al_l_1 = 4.6941
 omega_1 = al_l_1**2 / l2**2 * np.sqrt(E * I_inertia / ro / S)
 initial_vel = -omega_1 * ((np.cos(al_l_1) + np.cosh(al_l_1)) / (np.sin(al_l_1) + np.sinh(al_l_1)) * (np.sin(al_l_1 / l2 * x) - np.sinh(al_l_1 / l2 * x)) +
                           (np.cosh(al_l_1 / l2 * x) - np.cos(al_l_1 / l2 * x))) / 50  # /50 для масштаба
@@ -197,8 +199,16 @@ for i in range(len(omega_lst)):
         integ_vel_form += (vel_form[ii] + vel_form[ii-1]) / 2
     integ_vel_form = integ_vel_form * x_step
 
-    alpha_lst.append(1 / omega_lst[i] * integ_vel_form)
+    form_form = v1v2[i] * v1v2[i]
+    integ_form_form = 0
+    for ii in range(1, len(form_form)):
+        integ_form_form += (form_form[ii] + form_form[ii - 1]) / 2
+    integ_form_form = integ_form_form * x_step
+
+    alpha_lst.append(1 / omega_lst[i] * integ_vel_form / integ_form_form)
 print('\nAlpha list = {}'.format(alpha_lst))
+alpha_lst_abs = [abs(ii) for ii in alpha_lst]
+print('In percentages = {}'.format(np.round(np.array(alpha_lst_abs) / sum(alpha_lst_abs) * 100, 2)))
 # plt.figure()
 # plt.bar(np.arange(1, len(alpha_lst)+1), alpha_lst)
 
@@ -220,19 +230,72 @@ for i in range(len(roots_my)):
           (np.cos(k*x)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*x)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*x))))
 
     v1v2.append(np.concatenate((v1[i], v2[i])))  # форма всей балки как сумма формы левой и правой частей
+    x = np.concatenate((np.arange(0, l1, x_step), np.arange(l1, l2, x_step)))
 
     plt.figure()
     # plt.plot(list(np.arange(0, l1, x_step)) + list(np.arange(l1, l2, x_step)), list(v1[i]) + list(v2[i]), linewidth=2)
     plt.title('{} natural form'.format(i+1))
-    plt.plot(np.arange(0, l2, x_step), v1v2[i], linewidth=2)
+    plt.plot(x, v1v2[i], linewidth=2)
     plt.plot([l1], [0], 'ro', linewidth=2)
     plt.grid()
 
 # строим итоговый график формы, как сумма всех собственных форм, умноженных на соответствующие коэффициенты
+x = np.concatenate((np.arange(0, l1, x_step), np.arange(l1, l2, x_step)))
 plt.figure()
 plt.title('The sum of all natural forms')
-plt.plot(np.arange(0, l2, x_step), sum(v1v2), linewidth=2)
+plt.plot(x, sum(v1v2), linewidth=2)
 plt.plot([l1], [0], 'ro', linewidth=2)
 plt.grid()
+
+
+# переходим к моделированию динамики
+
+# для нахождения силы взаимодействия с барьером необходимо найти разрыв 3ей производной формы балки в точке барьера
+# третья производная формы левой части балки в точке барьера
+A3_fun = lambda k: ((-k**3*np.cos(k*l1)-k**3*np.cosh(k*l1)) - (np.sin(k*l1) - np.sinh(k*l1))/(np.cos(k*l1)-np.cosh(k*l1))*(k**3*np.sin(k*l1)-k**3*np.sinh(k*l1)))
+# третья производная формы правой части балки в точке барьера
+B3_fun = lambda k: ((-k**3*np.cos(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*k**3*np.cosh(k*l1) + (np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*k**3*np.sinh(k*l1)) -
+      (np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*np.cosh(k*l1))/
+      (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
+      (k**3*np.sin(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k**3*np.cosh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k**3*np.sinh(k*l1)))
+
+time_lst = np.arange(0, 0.07, 0.00007)
+uxt_lst = []
+# for t in time_lst:
+#     print(round(t / 0.026 * 100, 3))
+#     uxt = sum([v1v2[ii] * np.sin(omega_lst[ii] * t) for ii in range(len(roots_my))])
+#     print(uxt.shape)
+#     uxt_lst.append(uxt)
+Qt_lst = []
+for t in time_lst:
+    print(round(t / 0.07 * 100, 3))
+    # Qt = (скачек 3ей производной) * sin(omega * t)
+    Qt = sum([(alpha_lst[ii]*A3_fun(roots_my[ii]) - alpha_lst[ii] * A1_fun(roots_my[ii]) / B1_fun(roots_my[ii]) * B3_fun(roots_my[ii])) * np.sin(omega_lst[ii] * t) for ii in range(len(roots_my))])
+    Qt_lst.append(Qt)
+plt.figure()
+plt.plot(time_lst, Qt_lst)
+plt.grid()
+
+# ловим момент, когда сила взаимодействия с барьером обращается в ноль (то есть функция силы меняет знак).
+# в этот момент определяем текущую форму балки
+time_Q0 = 0
+for i in range(len(time_lst) - 1):
+    if Qt_lst[i] * Qt_lst[i+1] < 0:
+        time_Q0 = time_lst[i]
+        break
+
+print('Time of zero force = {}'.format(time_Q0))
+
+# строим форму балки в момент нулевой силы взаимодействия с барьером
+beam_shape_zero_force = sum([v1v2[ii] * np.sin(omega_lst[ii] * time_Q0) for ii in range(len(roots_my))])
+plt.figure()
+plt.title('Beam shape at the moment of zero force')
+plt.plot(x, beam_shape_zero_force, linewidth=2)
+plt.plot([l1], [0], 'ro', linewidth=2)
+plt.grid()
+
+# то есть мы получили форму балки в момент отрыва балки от барьера
+# эту форму раскладываем по собственным формам уже обычной консольно-закрепленной балки
+
 
 plt.show()
