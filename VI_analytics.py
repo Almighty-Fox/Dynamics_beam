@@ -16,7 +16,7 @@ nu = 0.3  # коэффициент Пуассона
 k = np.arange(0.0001, 15, 0.0001)  # лист значений каппы - замененная частота
 # k_step = 0.000001
 # k = np.concatenate((np.arange(2.4, 2.43, k_step), np.arange(3.1, 3.2, k_step), np.arange(5.55, 5.6, k_step)))
-l1 = 0.2  # местоположение барьера
+l1 = 0.9  # местоположение барьера
 l2 = 1  # длина балки
 
 # задаем константы, полученные с помощью аналитики
@@ -259,7 +259,7 @@ B3_fun = lambda k: ((-k**3*np.cos(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)
       (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
       (k**3*np.sin(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k**3*np.cosh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k**3*np.sinh(k*l1)))
 
-time_lst = np.arange(0, 0.07, 0.00007)
+time_lst = np.arange(0, 0.07, 0.00001)
 uxt_lst = []
 # for t in time_lst:
 #     print(round(t / 0.026 * 100, 3))
@@ -268,12 +268,13 @@ uxt_lst = []
 #     uxt_lst.append(uxt)
 Qt_lst = []
 for t in time_lst:
-    print(round(t / 0.07 * 100, 3))
+    # print(round(t / 0.07 * 100, 3))
     # Qt = (скачек 3ей производной) * sin(omega * t)
     Qt = sum([(alpha_lst[ii]*A3_fun(roots_my[ii]) - alpha_lst[ii] * A1_fun(roots_my[ii]) / B1_fun(roots_my[ii]) * B3_fun(roots_my[ii])) * np.sin(omega_lst[ii] * t) for ii in range(len(roots_my))])
     Qt_lst.append(Qt)
 plt.figure()
 plt.plot(time_lst, Qt_lst)
+plt.title('Barrier interection force')
 plt.grid()
 
 # ловим момент, когда сила взаимодействия с барьером обращается в ноль (то есть функция силы меняет знак).
@@ -297,11 +298,11 @@ plt.grid()
 # то есть мы получили форму балки в момент отрыва балки от барьера
 # эту форму раскладываем по собственным формам уже обычной консольно-закрепленной балки
 
-#
+# считаем поле скоростей балки в момент нулевого взаим. балки с барьером
 beam_velocity_zero_force = sum([v1v2[ii] * omega_lst[ii] * np.cos(omega_lst[ii] * time_Q0) for ii in range(len(roots_my))])
 
-#
-file_name = 'initial_disp_after_VI_loc_2.txt'
+# выводим поля координат и скоростей балки в момент отрыва балки от барьера в файл
+file_name = 'initial_disp_after_VI_loc_{}.txt'.format(round(l1 * 10))
 with open(r'./initial_disp/' + file_name, 'w') as cur_file:
     cur_file.write('\n'.join(str(i) for i in beam_shape_zero_force))
     cur_file.write('\n99999\n')

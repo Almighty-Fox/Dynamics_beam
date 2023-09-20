@@ -71,8 +71,9 @@ def main_body_fun(loc_bar=0.9):
     # ------------------------------ параметры барьера ----------------------------------
     # loc_bar = 0.9  # местоположение барьера вдоль оси балки (от 0 до 1)
     point_bar = round((MaxNode - 1) * loc_bar) * 2  # номер эелемента в глобальном векторе сил, на который действует сила VI
-    # delta = 5e-7  # зазор
-    delta = start_def[point_bar, 0] / 10  # зазор
+    delta = 0  # зазор
+    # delta = start_def[point_bar, 0] / 10  # зазор
+    start_def_loc_bar = start_def[point_bar, 0]
     delta_original = delta  # динамически немного далее двигаем барьер
     # ---------------------------
 
@@ -107,7 +108,7 @@ def main_body_fun(loc_bar=0.9):
     # main_chart_first_step(L, MaxNode, dis_i, start_def, time_lst, time_disp, time_disp_end, time_force)
 
     # ------- для вычисления силы VI ----------------------
-    k_c = 10e-3 * 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
+    k_c = 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
     print('k_c = {}'.format(k_c))
     vel_i_before = vel_i[point_bar, 0]
     dis_i_before = dis_i[point_bar, 0]
@@ -246,7 +247,7 @@ def main_body_fun(loc_bar=0.9):
                 # axs[2][1].set_xticks(np.arange(1, number_mode_plot + 1))
                 axs[2][1].set_xticks(np.arange(1, number_mode_plot - 1))
 
-                if len(time_lst) % (step_plot * 20) == 0:  # сохраняем график как картинку
+                if len(time_lst) % (step_plot * 200) == 0:  # сохраняем график как картинку
                     # file_name = 'loc_{}_time_{}.pdf'.format(loc_bar, str('%.2f' % t))
                     file_name = 'time_{}.pdf'.format(str('%.2f' % t))
                     # path = './plots/' + file_name
@@ -270,8 +271,10 @@ def main_body_fun(loc_bar=0.9):
             # df.origin.plot.bar(rot=0, log=True)
             # # --------------------------------------------------------
 
-            if 10 * dis_i[point_bar, 0] <= -delta:
-                dt = 2e-7  # если рядом с барьером
+            # if 10 * dis_i[point_bar, 0] <= -delta:
+            if dis_i[point_bar, 0] <= (start_def_loc_bar / 10):
+                dt = 1e-8  # если рядом с барьером
+                # print('little step')
             else:
                 dt = 2e-6
 
@@ -291,14 +294,21 @@ def main_body_fun(loc_bar=0.9):
 
 
 if __name__ == '__main__':
-    # loc_bar_list = np.arange(0.1, 1, 0.1)
-    loc_bar_list = np.arange(0.7, 1, 0.1)
-    for loc_bar in loc_bar_list:
-        path = './plots/location_{}/'.format(round(loc_bar, 1))
-        os.mkdir(path)
+    # # loc_bar_list = np.arange(0.1, 1, 0.1)
+    # loc_bar_list = np.arange(0.7, 1, 0.1)
+    # for loc_bar in loc_bar_list:
+    #     path = './plots/location_{}/'.format(round(loc_bar, 1))
+    #     os.mkdir(path)
+    #
+    #     with open(path + 'readme.txt', 'w') as f:
+    #         f.write('Close to the barrier 2e-7\nFar from the berrier 2e-6\nForce 1')
+    #
+    #     main_body_fun(loc_bar=loc_bar)
+    #     plt.close()
 
-        with open(path + 'readme.txt', 'w') as f:
-            f.write('Close to the barrier 2e-7\nFar from the berrier 2e-6\nForce 1')
-
-        main_body_fun(loc_bar=loc_bar)
-        plt.close()
+    loc_bar = 0.1
+    path = './plots/location_{}/'.format(round(loc_bar, 1))
+    os.mkdir(path)
+    with open(path + 'readme.txt', 'w') as f:
+        f.write('Close to the barrier 1e-8\nFar from the berrier 2e-6\nForce 1\nkc = 1\ndelta = 0')
+    main_body_fun(loc_bar=loc_bar)
