@@ -197,13 +197,14 @@ for t in np.arange(step, time_end, step):
         # вывод графика energy колебания балки
         if len(list_time) % step_plot == 0:
             df2 = pd.DataFrame(total_energy[:4], index=range(1, 5), columns=['Value'])
+            df2['Percentage'] = (df2['Value'] / df2['Value'].sum()) * 100
             # print(df2)
             # Plot the bar chart
-            axs[1][1].bar(x=df2.index, height=df2['Value'], color='skyblue')
+            axs[1][1].bar(x=df2.index, height=df2['Percentage'], color='skyblue')
 
             # Annotate each bar with percentages
             for p in axs[1][1].patches:
-                axs[1][1].annotate(f'{p.get_height():.2f}',
+                axs[1][1].annotate(f'{p.get_height():.2f}%',
                                    (p.get_x() + p.get_width() / 2., p.get_height()),
                                    ha='center', va='bottom', fontsize=8, color='black')
 

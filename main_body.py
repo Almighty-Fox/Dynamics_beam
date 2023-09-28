@@ -55,6 +55,16 @@ def main_body_fun(loc_bar=0.9):
     # проверочный для МЖ (матрица жесткости) статический расчет
     # с помощью него зададим начальные координаты
     start_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
+    # ----------------------------------------------------------
+    # пытаюсь задать начальную деформацию по первой собстенной форме, но проблема, что не знаю поле угловых координат
+    # alpha_l = 1.8864
+    # alpha_i = alpha_l / L
+    # u_start = lambda z: (
+    #             (np.cos(alpha_i * L) + np.cosh(alpha_i * L)) / (np.sin(alpha_i * L) + np.sinh(alpha_i * L)) * (
+    #             np.sin(alpha_i * z) - np.sinh(alpha_i * z)) + (
+    #                     np.cosh(alpha_i * z) - np.cos(alpha_i * z)))
+    # start_def = np.array([u_start(ii) for ii in np.linspace(0, L, MaxNode)])
+    # ----------------------------------------------------------
     print(start_def)
     print(np.concatenate(start_def).ravel().tolist())
 
