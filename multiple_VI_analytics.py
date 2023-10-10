@@ -51,7 +51,7 @@ def beam_without_barrier():
 # динамика балки без барьера
 def beam_no_VI_vibrations(disp_start, vel_start):
     print('NO barrier')
-    global t_global, y_barrier_global, Q_list_time, total_energy, y_end_global
+    global t_global, y_barrier_global, Q_list_time, total_energy, y_end_global, time_is_up
     integ_u = np.zeros(len(roots1), dtype=float)
     integ_u_dif = np.zeros(len(roots1), dtype=float)
     for id in range(len(roots1)):
@@ -72,10 +72,14 @@ def beam_no_VI_vibrations(disp_start, vel_start):
 
     first_step = True
 
-    while (y_list[point_barrier] >= 0) or (first_step):  # ???????????????????????
+    while ((y_list[point_barrier] >= 0) or (first_step)) and (not time_is_up):  # ???????????????????????
         first_step = False
         t_loc += t_step
         t_global += t_step
+
+        if t_global >= t_end:
+            time_is_up = True
+
         y_list = np.zeros(point, dtype=float)
         for id in range(len(roots1)):
             w_i = omega1[id]
@@ -198,7 +202,7 @@ def beam_with_barrier():
 # Динамика балки с барьером
 def beam_with_VI_vibrations(disp_start, vel_start):
     print('with barrier')
-    global t_global, y_barrier_global, Q_list_time, y_end_global
+    global t_global, y_barrier_global, Q_list_time, y_end_global, time_is_up
     integ_u = np.zeros(len(roots2), dtype=float)
     integ_u_dif = np.zeros(len(roots2), dtype=float)
     for id in range(len(roots2)):
@@ -219,10 +223,13 @@ def beam_with_VI_vibrations(disp_start, vel_start):
     y_list_previous = disp_start
 
     Q_t = -1
-    while Q_t < 0:  # ???????????????????????
+    while (Q_t < 0) and (not time_is_up):  # ???????????????????????
         Q_t = 0
         t_loc += t_step
         t_global += t_step
+
+        if t_global >= t_end:
+            time_is_up = True
 
         y_list_previous = y_list
         y_list = np.zeros(point, dtype=float)
@@ -354,14 +361,15 @@ ro = 7850  # плотность
 E = 2e11  # модуль Юнга
 # ------------------------------------------------
 point = 200 + 1  # количество элементов балки
-l1 = 0.7  # местоположение барьера
+l1 = 0.1  # местоположение барьера
 l2 = 1  # длина балки
 dl = l2 / (point - 1)
 point_barrier = round((point - 1) * l1)
 # ------------------------------------------------
 t_global = 0.0
-t_step = 0.000001
-t_end = 10.0
+t_step = 0.00001
+t_end = 0.15
+time_is_up = False  # флаг на то, закончилось ли время
 # ---------------------------------------------
 
 y_barrier_global = []
@@ -391,11 +399,23 @@ fig, axs = plt.subplots(2, 2, squeeze=False)  # создаем саб плот �
 plt.subplots_adjust(wspace=0.3, hspace=0.4)
 plt.pause(4)
 
-while True:
+# while True:
+while not time_is_up:
     print('Time = ', str(t_global))
     # Вначале запускаем динамику балки без барьера
     [disp_start, vel_start] = beam_no_VI_vibrations(disp_start, vel_start)
 
     print('Time = ', str(t_global))
     [disp_start, vel_start] = beam_with_VI_vibrations(disp_start, vel_start)
+
+
+Q_list_time_format = -np.array(Q_list_time) * E * J_inertia
+file_name = 'Analytics_write_VI_force.txt'
+with open(r'./plots/' + file_name, 'w') as cur_file:
+    cur_file.write(str(list(Q_list_time_format)))
+
+write_time = np.linspace(0, t_global, len(Q_list_time_format))
+file_name = 'Analytics_write_time.txt'
+with open(r'./plots/' + file_name, 'w') as cur_file:
+    cur_file.write(str(list(write_time)))
 

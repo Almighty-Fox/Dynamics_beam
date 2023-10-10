@@ -118,14 +118,14 @@ def main_body_fun(loc_bar=0.9):
     # main_chart_first_step(L, MaxNode, dis_i, start_def, time_lst, time_disp, time_disp_end, time_force)
 
     # ------- для вычисления силы VI ----------------------
-    k_c = 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
+    k_c = 10 * 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
     print('k_c = {}'.format(k_c))
     vel_i_before = vel_i[point_bar, 0]
     dis_i_before = dis_i[point_bar, 0]
     # -------------------------------------------------------------------------------------
     # начинаем цикл по времени
     t = 0
-    t_end = 0.5
+    t_end = 0.15
     try:
         while t < t_end:
             t += dt
@@ -282,11 +282,11 @@ def main_body_fun(loc_bar=0.9):
             # # --------------------------------------------------------
 
             # if 10 * dis_i[point_bar, 0] <= -delta:
-            if dis_i[point_bar, 0] <= (start_def_loc_bar / 10):
-                dt = 1e-8  # если рядом с барьером
+            if dis_i[point_bar, 0] <= (start_def_loc_bar / 40):
+                dt = 5e-8  # если рядом с барьером
                 # print('little step')
             else:
-                dt = 2e-6
+                dt = 1e-6
 
             # # каждые сколько-то шагов записываем значения амплитуд колебаний на рассматриваемый частотах в файл
             # if len(time_lst) % 10 == 0:
@@ -298,6 +298,30 @@ def main_body_fun(loc_bar=0.9):
             #     with open(r'./initial_disp/' + file_name, 'w') as cur_file:
             #         cur_file.write(str(vel_modes))
 
+            if len(time_lst) % (step_plot * 30) == 0:
+                file_name = 'write_disp.txt'
+                with open(r'./plots/' + file_name, 'w') as cur_file:
+                    cur_file.write(str(time_disp_end))
+
+                file_name = 'write_time.txt'
+                with open(r'./plots/' + file_name, 'w') as cur_file:
+                    cur_file.write(str(time_lst))
+
+                file_name = 'write_VI_force.txt'
+                with open(r'./plots/' + file_name, 'w') as cur_file:
+                    cur_file.write(str(time_force))
+
+                if t < 0.11:
+                    file_name = 'write_en_1.txt'
+                    with open(r'./plots/' + file_name, 'w') as cur_file:
+                        cur_file.write('Time = ' + str(t) + '\n')
+                        cur_file.write(str(full_en_mode))
+
+                # if t < 0.13:
+                #     file_name = 'write_en_2.txt'
+                #     with open(r'./plots/' + file_name, 'w') as cur_file:
+                #         cur_file.write('Time = ' + str(t) + '\n')
+                #         cur_file.write(str(full_en_mode))
 
     except KeyboardInterrupt:
         return
