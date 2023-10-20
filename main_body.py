@@ -20,6 +20,7 @@ def main_body_fun(loc_bar=0.9):
     L = 1
     MaxNode = 20 + 1  # количество узлов
     dl = L / (MaxNode - 1)
+    dm = dl * ro
     # ---------определяем параметры временного шага----------
     # первая частота балки = 8 Гц, период = 0.125с
     dt = 2e-6  # шаг по времени
@@ -41,7 +42,7 @@ def main_body_fun(loc_bar=0.9):
     # print(global_mass)
 
     global_force = np.zeros((2 * MaxNode, 1))  # создаем размер глобального вектора сил
-    global_force = create_global_force(global_force, f_ampl=1)  # создаем начальный вектор сил
+    global_force = create_global_force(global_force, f_ampl=0)  # создаем начальный вектор сил
 
     eigenvalues, eigenvectors_normalized = create_modal_matrix(global_stiffness, global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
 
@@ -107,7 +108,7 @@ def main_body_fun(loc_bar=0.9):
     axs[2][0].set_title('VI force')
     axs[0][0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
     scale = start_def[-2][0]  # Масштаб графика формы балки
-    axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
+    # axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
     axs[1][0].plot(time_lst, time_disp, 'g', linewidth=1)
     axs[1][0].plot(time_lst, time_disp_end, 'k', linewidth=1)
     axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)
@@ -118,48 +119,94 @@ def main_body_fun(loc_bar=0.9):
     # main_chart_first_step(L, MaxNode, dis_i, start_def, time_lst, time_disp, time_disp_end, time_force)
 
     # ------- для вычисления силы VI ----------------------
-    k_c = 10 * 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
+    k_c = 100 * 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
     print('k_c = {}'.format(k_c))
     vel_i_before = vel_i[point_bar, 0]
     dis_i_before = dis_i[point_bar, 0]
     # -------------------------------------------------------------------------------------
+    global_force = create_global_force(global_force, f_ampl=0)  # обнуляем силу на конце балки
+
+
+    # ------- EARTHQUAKE ----------------
+    earthquake_time_step, earthquake_all_data = open_file_earthquake_data()  # при землетрясении
+    normal_fr = np.sqrt(2688.5 / 244.98707749566427)  # нормализуем землетрясение в Кобе, сужаем акселлелограмму, что бы несущая частота совпала с первой частотой колебания балки
+    earthquake_time_step = earthquake_time_step / normal_fr
+    earthquake_time_lst = np.linspace(0, (len(earthquake_all_data) - 1) * earthquake_time_step, len(earthquake_all_data))
+
+    # вырезаем из акселлелограммы только интересующий нас интервал
+    # -------------------
+    def cut_list(lst, value):
+        id_cut = 0
+        for i in range(len(lst)):
+            if lst[i] > value:
+                id_cut = i
+                break
+        return id_cut
+
+    time_start = 7.38
+    time_end = 13
+    i_start = cut_list(earthquake_time_lst, time_start)
+    i_end = cut_list(earthquake_time_lst, time_end)
+
+    earthquake_all_data = earthquake_all_data[i_start:i_end]
+    # -------------------
+
+    earthquake_data_inverse = earthquake_all_data[::-1]
+    accumulated_earthquake_time = 0
+    # ---------- END EARTHQUAKE -------------------------
+
     # начинаем цикл по времени
     t = 0
-    t_end = 0.15
+    t_end = 5.62
+    dt_small = 1e-4
+    dt_big = 1e-7
+    MCK_small = global_mass + gamma * dt_small * global_damping + beta * dt_small ** 2 * global_stiffness
+    MCK_small_inv = np.linalg.inv(MCK_small)
+    MCK_big = global_mass + gamma * dt_big * global_damping + beta * dt_big ** 2 * global_stiffness
+    MCK_big_inv = np.linalg.inv(MCK_big)
+    is_near_barrier = False
     try:
         while t < t_end:
             t += dt
 
-            MCK = global_mass + gamma * dt * global_damping + beta * dt ** 2 * global_stiffness
-
-            # print('Time = ', str(t))
-
-            # if True:
-            # if t < 2e-3:
-            # # if t < dt * 100:
-            #     f_ampl = -600 * np.sin(2 * np.pi * 5 * t)
-            #     # f_ampl = 1
-            # else:
-            #     f_ampl = 0
-
-            global_force = create_global_force(global_force, f_ampl=0)
-            global_force[point_bar, 0] = 0
-
-            if -dis_i[point_bar, 0] - delta >= 0:
-                # delta = -dis_i_before * 0.999  # динамически двигаем барьер
-                # print('Действует сила')
-                global_force = create_VI_force(global_force, point_bar, delta, dis_i[point_bar, 0], vel_i[point_bar, 0],
-                                               vel_i_before, k_c, restitution=0.7)
+            # MCK = global_mass + gamma * dt * global_damping + beta * dt ** 2 * global_stiffness
+            if is_near_barrier:
+                MCK = MCK_small
+                MCK_inv = MCK_small_inv
             else:
-                # delta = delta_original
-                vel_i_before = vel_i[point_bar, 0]
-                dis_i_before = dis_i[point_bar, 0]
+                MCK = MCK_big
+                MCK_inv = MCK_big_inv
+
+            # global_force = create_global_force(global_force, f_ampl=0)
+            global_force[point_bar, 0] = 0  # обнуляем силу взаимодействия с барьером
+
+            # ------- EARTHQUAKE ----------------
+            accumulated_earthquake_time += dt
+            if accumulated_earthquake_time >= earthquake_time_step:
+                accumulated_earthquake_time = 0
+                last_value = earthquake_data_inverse.pop()
+                print(last_value)
+            global_force = earthquake_force(global_force, earthquake_data_inverse[-1], dm)  # инерционная сила при землетрясении
+            # -----------------------------------
+
+            VI_force = 0
+            if -dis_i[point_bar, 0] - delta >= 0:
+                # print('Действует сила')
+
+                # гасим в случае, когда фигачим без барьера
+                global_force, VI_force = create_VI_force(global_force, point_bar, delta, dis_i[point_bar, 0], vel_i[point_bar, 0],
+                                               vel_i_before, k_c, restitution=0.7)
+                # pass
+            else:
+                # vel_i_before = vel_i[point_bar, 0]
+                # dis_i_before = dis_i[point_bar, 0]
+                pass
 
             # print(vel_i[MaxNode+1, 0])
             vel_i1_pred = vel_i + (1 - gamma) * dt * acc_i
             dis_i1_pred = dis_i + dt * vel_i + (0.5 - beta) * dt ** 2 * acc_i
 
-            acc_i1 = np.matmul(np.linalg.inv(MCK),
+            acc_i1 = np.matmul(MCK_inv,
                                global_force - np.matmul(global_damping, vel_i1_pred) - np.matmul(global_stiffness,
                                                                                                  dis_i1_pred))
 
@@ -172,7 +219,8 @@ def main_body_fun(loc_bar=0.9):
 
             time_disp.append(dis_i1[point_bar, 0])
             time_disp_end.append(dis_i1[-2, 0])
-            time_force.append(global_force[point_bar, 0])
+            # time_force.append(global_force[point_bar, 0])
+            time_force.append(VI_force)
             time_lst.append(t)
 
             if len(time_lst) % step_plot == 0:
@@ -190,7 +238,7 @@ def main_body_fun(loc_bar=0.9):
                 axs[0][0].plot([L * (point_bar / 2) / (MaxNode - 1)], [-delta], 'b^', markersize=7)  # Местоположение барьера
                 # scale = max(abs(min(time_disp_end)), abs(max(time_disp_end)), delta * 2)  # Масштаб графика формы балки
                 scale = start_def[-2][0]  # Масштаб графика формы балки
-                axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
+                # axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
 
                 axs[1][0].plot(time_lst, time_disp, color='g', linewidth=1)  # временная з-ть середины балки
                 axs[1][0].plot(time_lst, time_disp_end, color='k', linewidth=1)  # временная з-ть конца балки
@@ -257,7 +305,7 @@ def main_body_fun(loc_bar=0.9):
                 # axs[2][1].set_xticks(np.arange(1, number_mode_plot + 1))
                 axs[2][1].set_xticks(np.arange(1, number_mode_plot - 1))
 
-                if len(time_lst) % (step_plot * 200) == 0:  # сохраняем график как картинку
+                if len(time_lst) % (step_plot * 500) == 0:  # сохраняем график как картинку
                     # file_name = 'loc_{}_time_{}.pdf'.format(loc_bar, str('%.2f' % t))
                     file_name = 'time_{}.pdf'.format(str('%.2f' % t))
                     # path = './plots/' + file_name
@@ -283,10 +331,12 @@ def main_body_fun(loc_bar=0.9):
 
             # if 10 * dis_i[point_bar, 0] <= -delta:
             if dis_i[point_bar, 0] <= (start_def_loc_bar / 40):
-                dt = 5e-8  # если рядом с барьером
+                dt = dt_small  # если рядом с барьером
+                is_near_barrier = True
                 # print('little step')
             else:
-                dt = 1e-6
+                dt = dt_big
+                is_near_barrier = False
 
             # # каждые сколько-то шагов записываем значения амплитуд колебаний на рассматриваемый частотах в файл
             # if len(time_lst) % 10 == 0:
@@ -298,7 +348,7 @@ def main_body_fun(loc_bar=0.9):
             #     with open(r'./initial_disp/' + file_name, 'w') as cur_file:
             #         cur_file.write(str(vel_modes))
 
-            if len(time_lst) % (step_plot * 30) == 0:
+            if len(time_lst) % (step_plot * 50) == 0:
                 file_name = 'write_disp.txt'
                 with open(r'./plots/' + file_name, 'w') as cur_file:
                     cur_file.write(str(time_disp_end))
@@ -310,18 +360,18 @@ def main_body_fun(loc_bar=0.9):
                 file_name = 'write_VI_force.txt'
                 with open(r'./plots/' + file_name, 'w') as cur_file:
                     cur_file.write(str(time_force))
-
-                if t < 0.11:
-                    file_name = 'write_en_1.txt'
-                    with open(r'./plots/' + file_name, 'w') as cur_file:
-                        cur_file.write('Time = ' + str(t) + '\n')
-                        cur_file.write(str(full_en_mode))
-
-                # if t < 0.13:
-                #     file_name = 'write_en_2.txt'
-                #     with open(r'./plots/' + file_name, 'w') as cur_file:
-                #         cur_file.write('Time = ' + str(t) + '\n')
-                #         cur_file.write(str(full_en_mode))
+            #
+            #     if t < 0.05:
+            #         file_name = 'write_en_1.txt'
+            #         with open(r'./plots/' + file_name, 'w') as cur_file:
+            #             cur_file.write('Time = ' + str(t) + '\n')
+            #             cur_file.write(str(full_en_mode))
+            #
+            #     if t < 0.149:
+            #         file_name = 'write_en_2.txt'
+            #         with open(r'./plots/' + file_name, 'w') as cur_file:
+            #             cur_file.write('Time = ' + str(t) + '\n')
+            #             cur_file.write(str(full_en_mode))
 
     except KeyboardInterrupt:
         return
@@ -340,7 +390,7 @@ if __name__ == '__main__':
     #     main_body_fun(loc_bar=loc_bar)
     #     plt.close()
 
-    loc_bar = 0.1
+    loc_bar = 0.7
     path = './plots/location_{}/'.format(round(loc_bar, 1))
     os.mkdir(path)
     with open(path + 'readme.txt', 'w') as f:

@@ -61,7 +61,41 @@ def create_VI_force(global_force, point_bar, delta, dis_i_bar, vel_i_bar, vel_i_
     # print('plus_slag**(3/2) = {}'.format(plus_slag**(3/2)))
     # print('VI_force = {}'.format(VI_force))
 
-    global_force[point_bar, 0] = VI_force
+    global_force[point_bar, 0] += VI_force
+
+    return global_force, VI_force
+
+
+def open_file_earthquake_data():
+    file_name = r'D:\Beam\PEERNGARecords_Unscaled\RSN1106_KOBE_KJM000.AT2'
+    with open(file_name, 'r') as cur_file:
+        body = cur_file.readlines()
+
+    # выделяем из файла значения количества точек и шага по времени
+    print(body[:4])
+    param = body[3].split(', ')
+    points = int(param[0].split('=')[1])
+    time_step = float((param[1].split('=')[1]).strip().split(' ')[0])
+
+    # отбрасываем шапку тела файла
+    body_points = list(map(lambda x: x.strip(), body[4:]))
+    all_data = []
+    for line in body_points:
+        line_sep = list(map(float, line.split('  ')))
+        all_data += line_sep
+
+    print('Количетво точек совпадает с указанным в файле:', end=' ')
+    print(len(all_data) == points)
+    print('Количество значений: {}'.format(points))
+    print('Time step: {}'.format(time_step))
+
+    return time_step, all_data
+
+
+# инерционная сила при землетрясении
+def earthquake_force(global_force, earth_acceleration, dm):
+
+    global_force[2::2, 0] = -earth_acceleration * dm
 
     return global_force
 

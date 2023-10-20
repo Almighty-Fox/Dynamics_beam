@@ -361,13 +361,13 @@ ro = 7850  # плотность
 E = 2e11  # модуль Юнга
 # ------------------------------------------------
 point = 200 + 1  # количество элементов балки
-l1 = 0.1  # местоположение барьера
+l1 = 0.7  # местоположение барьера
 l2 = 1  # длина балки
 dl = l2 / (point - 1)
 point_barrier = round((point - 1) * l1)
 # ------------------------------------------------
 t_global = 0.0
-t_step = 0.00001
+t_step = 0.000001
 t_end = 0.15
 time_is_up = False  # флаг на то, закончилось ли время
 # ---------------------------------------------
@@ -419,3 +419,6 @@ file_name = 'Analytics_write_time.txt'
 with open(r'./plots/' + file_name, 'w') as cur_file:
     cur_file.write(str(list(write_time)))
 
+file_name = 'Analytics_write_disp.txt'
+with open(r'./plots/' + file_name, 'w') as cur_file:
+    cur_file.write(str(list(y_end_global)))
