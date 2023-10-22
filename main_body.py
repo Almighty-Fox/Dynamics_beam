@@ -25,8 +25,8 @@ def main_body_fun(loc_bar=0.9):
     dm = dl * ro
     # ---------определяем параметры временного шага----------
     # первая частота балки = 8 Гц, период = 0.125с
-    dt = 2e-6  # шаг по времени
-    t_end = 200  # исследуемый интервал времени
+    # dt = 2e-6  # шаг по времени
+    # t_end = 200  # исследуемый интервал времени
     # ---------определяем параметры метода Ньюмарка----------
     gamma = 0.5
     beta = 0.5
@@ -59,16 +59,8 @@ def main_body_fun(loc_bar=0.9):
     # с помощью него зададим начальные координаты
     start_def = np.matmul(np.linalg.inv(global_stiffness), global_force)
     # ----------------------------------------------------------
-    # пытаюсь задать начальную деформацию по первой собстенной форме, но проблема, что не знаю поле угловых координат
-    # alpha_l = 1.8864
-    # alpha_i = alpha_l / L
-    # u_start = lambda z: (
-    #             (np.cos(alpha_i * L) + np.cosh(alpha_i * L)) / (np.sin(alpha_i * L) + np.sinh(alpha_i * L)) * (
-    #             np.sin(alpha_i * z) - np.sinh(alpha_i * z)) + (
-    #                     np.cosh(alpha_i * z) - np.cos(alpha_i * z)))
-    # start_def = np.array([u_start(ii) for ii in np.linspace(0, L, MaxNode)])
-    # ----------------------------------------------------------
-    print(start_def)
+
+    # print(start_def)
     print(np.concatenate(start_def).ravel().tolist())
 
     # Начало метода Ньюмарка
@@ -87,22 +79,20 @@ def main_body_fun(loc_bar=0.9):
     delta = 0  # зазор
     # delta = start_def[point_bar, 0] / 10  # зазор
     start_def_loc_bar = start_def[point_bar, 0]
-    delta_original = delta  # динамически немного далее двигаем барьер
     # ---------------------------
 
     time_disp = [dis_i[point_bar, 0]]  # запоминаем з-ть коодинаты середины балки
     time_disp_end = [dis_i[-2, 0]]  # запоминаем з-ть коодинаты конца балки
     time_force = [global_force[point_bar, 0]]  # запоминаем з-ть VI силы
     time_lst = [0]  # массив времени
-    en_kin_lst = []  # массив кинетической энергии балки
-    modal_vel_time = [0]  # массив суммы квадратов модальный скоростей
-    disp_modes = [0] * (2 * MaxNode)  # массив модальных перемещений
-    vel_modes = [0] * (2 * MaxNode)  # массив модальных скоростей
-    full_en_mode = [0] * (2 * MaxNode)  # массив полной энергии мод
+
     step_plot = 1000  # каждый 200ый шаг выводим графики
     number_mode_plot = 10  # количество мод, которое выводим на графиках
-    full_en_lst = []  # массив полной энергии стержня, кин + потен
-    earthquake_en_lst = []  # массив энергии, переданной балке через силы инерции
+    full_en_lst = [0]  # массив полной энергии стержня, кин + потен
+    earthquake_en_lst = [0]  # массив энергии, переданной балке через силы инерции
+    en_func = []  # лист функционала энергии
+    time_en_func = []  # лист времени для массива функционала энергии
+    file_num = 1  # порядковый номер текстового файла, в который записываем очередную порцию дданных
 
     fig, axs = plt.subplots(3, 2)
     plt.subplots_adjust(wspace=0.4, hspace=0.8)
@@ -120,7 +110,6 @@ def main_body_fun(loc_bar=0.9):
     axs[0][0].clear()
     axs[1][0].clear()
     axs[2][0].clear()
-    # main_chart_first_step(L, MaxNode, dis_i, start_def, time_lst, time_disp, time_disp_end, time_force)
 
     # ------- для вычисления силы VI ----------------------
     k_c = 100 * 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
@@ -290,48 +279,40 @@ def main_body_fun(loc_bar=0.9):
                 axs[1][0].plot(time_lst, [-delta] * len(time_lst), 'r--', linewidth=1)  # барьер
 
                 axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)  # временная з-ть силы VI
-                # plt.pause(0.000001)
-                # axs[0][0].clear()
-                # axs[1][0].clear()
-                # axs[2][0].clear()
 
             # ----------- выводим график полной энергии --------
             dis_i_transp = [disp for sublist in dis_i for disp in sublist]
             vel_i_transp = [vel for sublist in vel_i for vel in sublist]
-            full_cur_en = 1 / 2 * np.dot(vel_i_transp, np.dot(global_mass, vel_i)) + 1 / 2 * np.dot(dis_i_transp, np.dot(global_stiffness, dis_i))
+            full_cur_en = 1 / 2 * np.dot(vel_i_transp, np.dot(global_mass, vel_i))[0] + 1 / 2 * np.dot(dis_i_transp, np.dot(global_stiffness, dis_i))[0]
             full_en_lst.append(full_cur_en)
             earthquake_en_lst.append(A_earthquake)
             if len(time_lst) % step_plot == 0:
-                axs[0][1].set_title('Total energy')
-                axs[0][1].plot(time_lst[1:], full_en_lst, color='k', linewidth=1)
-                axs[0][1].plot(time_lst[1:], earthquake_en_lst, color='r', linestyle='--', linewidth=1)
-            # # --------------------------------------------------------
-
-            # # ----------- выводим график модальный скоростей --------
-            # modal_vel_i = np.matmul(np.linalg.inv(eigenvectors_normalized), vel_i)
-            # modal_vel_i_transp = [modal_vel for sublist in modal_vel_i for modal_vel in sublist]
-            # # modal_vel_time.append(sum(list(map(lambda x: x**2, modal_vel_i_transp))) / 2)
-            # modal_vel_time.append(modal_vel_i_transp[9])
-            # plt.figure(3)
-            # plt.plot(time_lst, modal_vel_time, color='k', linewidth=1)
-            # # --------------------------------------------------------
+                axs[0][1].set_title('Energy')
+                axs[0][1].plot(time_lst, full_en_lst, color='k', linewidth=1, label='Beam')
+                axs[0][1].plot(time_lst, earthquake_en_lst, color='r', linestyle='--', linewidth=1, label='Earthquake')
+                # axs[0][1].legend()
+            # --------------------------------------------------------
 
             # ------заполняем массив амплитудами перемещений рассматриваемых мод------------
             modal_dis_i = np.matmul(np.linalg.inv(eigenvectors_normalized), dis_i)
             modal_dis_i_transp = [modal_dis for sublist in modal_dis_i for modal_dis in sublist]
-            # for jj in range(len(modal_dis_i_transp)):
-            #     disp_modes[jj] = max(disp_modes[jj], modal_dis_i_transp[jj])
             # --------------------------------------------------------
             # ------ заполняем массив квадратами амплитуд модальных скоростей ------------
             modal_vel_i = np.matmul(np.linalg.inv(eigenvectors_normalized), vel_i)
             modal_vel_i_transp = [modal_vel for sublist in modal_vel_i for modal_vel in sublist]
-            # for jj in range(len(modal_vel_i_transp)):
-            #     vel_modes[jj] = max(vel_modes[jj], modal_vel_i_transp[jj] ** 2)
             # --------------------------------------------------------
 
             # ------ заполняем массив полной энергии мод ------------
             full_en_mode = 1 / 2 * np.array(modal_vel_i_transp) ** 2 + 1 / 2 * eigenvalues * np.array(modal_dis_i_transp) ** 2
-            # plt.figure(3)
+
+            # if len(time_lst) % 10 == 0:
+            energy_values = [full_en_mode[i] for i in [1, 2, 3, 4, 6, 7, 8, 9]]
+            energy_density = np.array([(en_cur / np.sum(energy_values)) for en_cur in energy_values])
+            en_func_cur = -np.sum(energy_density * np.log(energy_density))
+            # en_func_cur = -np.sum(energy_density)
+            en_func.append(en_func_cur)
+            time_en_func.append(t)
+
             if len(time_lst) % step_plot == 0:
                 df = pd.DataFrame(full_en_mode, columns=['origin'], index=range(1, len(modal_vel_i_transp) + 1))
                 axs[1][1].set_title('Energy distribution over modes\nMax energy = {} %'.format(round(max(df.origin[:number_mode_plot]) / sum(df.origin[:number_mode_plot]) * 100)), fontsize=10, pad=0)
@@ -342,71 +323,57 @@ def main_body_fun(loc_bar=0.9):
                 # axs[1][1].set_xticks(np.arange(1, number_mode_plot + 1))
                 axs[1][1].set_xticks(np.arange(1, number_mode_plot - 1))
 
-                axs[2][1].set_title('Log distribution of energy over modes', fontsize=10)
-                # axs[2][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot], log=True)
-                axs[2][1].bar(np.arange(1, number_mode_plot - 1), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 6, 7, 8, 9]], log=True)
-                # axs[2][1].set_xticks(np.arange(1, number_mode_plot + 1))
-                axs[2][1].set_xticks(np.arange(1, number_mode_plot - 1))
+                # вместо графика логарифма энергии будем строить график функционала распределения энергии
+                # axs[2][1].set_title('Log distribution of energy over modes', fontsize=10)
+                # # axs[2][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot], log=True)
+                # axs[2][1].bar(np.arange(1, number_mode_plot - 1), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 6, 7, 8, 9]], log=True)
+                # # axs[2][1].set_xticks(np.arange(1, number_mode_plot + 1))
+                # axs[2][1].set_xticks(np.arange(1, number_mode_plot - 1))
+                # ----------------------------------------------------------------------------------
+                # строим график функционала распределения энергии по модам балки
+                axs[2][1].set_title('Energy functional', fontsize=10)
+                axs[2][1].plot(time_en_func, en_func, color='b', linewidth=1)
+                # ----------------------------------------------------------------------------------
 
                 if len(time_lst) % (step_plot * 500) == 0:  # сохраняем график как картинку
-                    # file_name = 'loc_{}_time_{}.pdf'.format(loc_bar, str('%.2f' % t))
                     file_name = 'time_{}.pdf'.format(str('%.2f' % t))
-                    # path = './plots/' + file_name
-                    path = './plots/location_{}/'.format(round(loc_bar, 1)) + file_name
-                    plt.savefig(path, bbox_inches='tight')
+                    path_cur = path + file_name
+                    plt.savefig(path_cur, bbox_inches='tight')
 
                 plt.pause(0.000001)
-                axs[1][1].clear()
-                axs[2][1].clear()
-
+                # plt.pause(3)
                 axs[0][0].clear()
                 axs[1][0].clear()
                 axs[2][0].clear()
-
                 axs[0][1].clear()
-                # print(df.origin[:20])
-            # --------------------------------------------------------
-            # # -------- строим график распределения квадратов модальных скоростей по модам -------
-            # plt.figure(4)
-            # df = pd.DataFrame(vel_modes, columns=['origin'], index=range(1, len(vel_modes) + 1))
-            # df.origin.plot.bar(rot=0, log=True)
-            # # --------------------------------------------------------
+                axs[1][1].clear()
+                axs[2][1].clear()
 
+            # для экономии времени записи листов в файл и экономии места в этих листах, будем каждые сколько то шагов сбрасывать значения в новый файл и обнулять листы
+            if len(time_lst) % (step_plot * 500) == 0:
+                # time_disp_end, time_disp(berrier), time_lst, time_force, full_en_lst, earthquake_en_lst, en_func, time_en_func
 
-            # # каждые сколько-то шагов записываем значения амплитуд колебаний на рассматриваемый частотах в файл
-            # if len(time_lst) % 10 == 0:
-            #     file_name = 'write_ampl_modes_{}_nodes.txt'.format(MaxNode)
-            #     with open(r'./initial_disp/' + file_name, 'w') as cur_file:
-            #         cur_file.write(str(disp_modes))
-            #
-            #     file_name = 'write_ampl_vel_modes_{}_nodes.txt'.format(MaxNode)
-            #     with open(r'./initial_disp/' + file_name, 'w') as cur_file:
-            #         cur_file.write(str(vel_modes))
-
-            if len(time_lst) % (step_plot * 50) == 0:
-                file_name = 'write_disp.txt'
-                with open(r'./plots/' + file_name, 'w') as cur_file:
+                with open(path + 'time_disp_end_{}.txt'.format(file_num), 'w') as cur_file:
                     cur_file.write(str(time_disp_end))
-
-                file_name = 'write_time.txt'
-                with open(r'./plots/' + file_name, 'w') as cur_file:
+                with open(path + 'time_disp_{}.txt'.format(file_num), 'w') as cur_file:
+                    cur_file.write(str(time_disp))
+                with open(path + 'time_lst_{}.txt'.format(file_num), 'w') as cur_file:
                     cur_file.write(str(time_lst))
-
-                file_name = 'write_VI_force.txt'
-                with open(r'./plots/' + file_name, 'w') as cur_file:
+                with open(path + 'time_force_{}.txt'.format(file_num), 'w') as cur_file:
                     cur_file.write(str(time_force))
-            #
-            #     if t < 0.05:
-            #         file_name = 'write_en_1.txt'
-            #         with open(r'./plots/' + file_name, 'w') as cur_file:
-            #             cur_file.write('Time = ' + str(t) + '\n')
-            #             cur_file.write(str(full_en_mode))
-            #
-            #     if t < 0.149:
-            #         file_name = 'write_en_2.txt'
-            #         with open(r'./plots/' + file_name, 'w') as cur_file:
-            #             cur_file.write('Time = ' + str(t) + '\n')
-            #             cur_file.write(str(full_en_mode))
+                with open(path + 'full_en_lst_{}.txt'.format(file_num), 'w') as cur_file:
+                    cur_file.write(str(full_en_lst))
+                with open(path + 'earthquake_en_lst_{}.txt'.format(file_num), 'w') as cur_file:
+                    cur_file.write(str(earthquake_en_lst))
+                with open(path + 'en_func_{}.txt'.format(file_num), 'w') as cur_file:
+                    cur_file.write(str(en_func))
+                with open(path + 'time_en_func_{}.txt'.format(file_num), 'w') as cur_file:
+                    cur_file.write(str(time_en_func))
+
+                file_num += 1
+
+                time_disp_end, time_disp, time_lst, time_force, full_en_lst, earthquake_en_lst, en_func, time_en_func = [], [], [], [], [], [], [], []
+                # ------------------------------------------------------------------------------
 
     except KeyboardInterrupt:
         return
