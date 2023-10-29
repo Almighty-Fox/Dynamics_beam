@@ -103,7 +103,37 @@ basic_omega_2 = (2 * np.pi * basic_freq) ** 2
 print('Omega 2 = ', basic_omega_2)
 print('Omega = ', np.sqrt(basic_omega_2))
 
+# ----------------------------------------------------------------
+# строим нормализированную акселерограмму. Строим интересующий нас интервал.
+# normal_fr = np.sqrt(2688.5 / 244.98707749566427)
+normal_fr = 1
+time_lst_norm = time_lst / normal_fr
 
+time_start = 4.3
+time_end = 9.92
+
+def cut_list(lst, value):
+    id_cut = 0
+    for i in range(len(lst)):
+        if lst[i] > value:
+            id_cut = i
+            break
+    return id_cut
+
+
+i_start = cut_list(time_lst_norm, time_start)
+i_end = cut_list(time_lst_norm, time_end)
+
+scale_acc = max(all_data[i_start:i_end])
+
+plt.figure()
+plt.plot(time_lst_norm, all_data)
+plt.plot([time_lst_norm[i_start], time_lst_norm[i_start]], [0, scale_acc], 'r--')
+plt.plot([time_lst_norm[i_end], time_lst_norm[i_end]], [0, scale_acc], 'r--')
+plt.grid()
+plt.xlabel('Time, sec')
+plt.ylabel('Acceleration, g')
+plt.title('Kobe earthquake')
 
 plt.show()
 

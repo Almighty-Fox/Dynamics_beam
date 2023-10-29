@@ -42,8 +42,10 @@ def spot():
 earthquake_time_lst, earthquake_all_data = spot()
 
 max_acc = []
-w_lst_start, w_lst_end, w_lst_step = 0, 301, 1
-w_lst = range(w_lst_start, w_lst_end, w_lst_step)
+# w_lst_start, w_lst_end, w_lst_step = 0, 301, 1
+w_lst_start, w_lst_end, w_lst_step = 6, 41, 0.5
+# w_lst = range(w_lst_start, w_lst_end, w_lst_step)
+w_lst = np.arange(w_lst_start, w_lst_end, w_lst_step)
 for w in w_lst:
     print(w)
     # time_lst = np.linspace(0, earthquake_time_lst[-1], 1000)

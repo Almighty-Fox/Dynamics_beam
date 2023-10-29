@@ -392,7 +392,7 @@ if __name__ == '__main__':
     #     main_body_fun(loc_bar=loc_bar)
     #     plt.close()
 
-    loc_bar = 0.7
+    loc_bar = 0.1
     path = './plots/location_{}/'.format(round(loc_bar, 1))
     os.mkdir(path)
     with open(path + 'readme.txt', 'w') as f:
