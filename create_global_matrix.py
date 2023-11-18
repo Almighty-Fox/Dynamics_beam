@@ -92,6 +92,20 @@ def open_file_earthquake_data():
     return time_step, all_data
 
 
+def create_impulse_earthquake_data():  # создаем импульсное поле ускорений
+    points = 75000
+    impulse_period = 1e-3
+    time_step = 1e-4
+    ampl_impulse = 100
+    impulse_point = int(impulse_period / time_step)
+    x_impulse = np.linspace(0, impulse_period, impulse_point)
+    omega_impulse = 2 * np.pi * (1 / (impulse_period * 2))
+    y_impulse = -ampl_impulse * np.sin(omega_impulse * x_impulse)
+    all_data = list(y_impulse) + [0] * (points - len(y_impulse))
+
+    return time_step, all_data, impulse_period
+
+
 # инерционная сила при землетрясении
 def earthquake_force(global_force, earth_acceleration, dm):
 
