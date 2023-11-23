@@ -9,7 +9,7 @@ def read_file(file_name):
         return data
 
 
-def data_on_cut_files(main_file_name):
+def data_on_cut_files(path, main_file_name):
     float_list = []
 
     for i in range(1, 20):  # Assuming you have up to file_99.txt
@@ -24,7 +24,7 @@ def data_on_cut_files(main_file_name):
     return float_list
 
 
-if __name__ == "__main__":
+def plot_data_on_cut_files():
     plt.figure(1)
 
     # plt.title('Energy functional', pad=8)
@@ -42,17 +42,17 @@ if __name__ == "__main__":
     loc_bar = 0.9
     path = './plots/location_{}/'.format(round(loc_bar, 1))
     # en_func = data_on_cut_files('en_func')
-    en_func = data_on_cut_files('time_disp_end')
+    en_func = data_on_cut_files(path, 'time_disp_end')
     print(len(en_func))
     # time_en_func = data_on_cut_files('time_en_func')
-    time_en_func = data_on_cut_files('time_lst')
+    time_en_func = data_on_cut_files(path, 'time_lst')
     # plt.plot(time_en_func, en_func, color='r', label=f'loc = {loc_bar}', linewidth=2)
     plt.plot(time_en_func, en_func, color='k', label='Beam end coordinate', linewidth=1)
 
     loc_bar = 0.9
     path = './plots/location_{}/'.format(round(loc_bar, 1))
     # en_func = data_on_cut_files('en_func')
-    en_func = data_on_cut_files('time_disp')
+    en_func = data_on_cut_files(path, 'time_disp')
     print(len(en_func))
     # time_en_func = data_on_cut_files('time_en_func')
     # plt.plot(time_en_func, en_func, color='k', label=f'loc = {loc_bar}', linestyle='--')
@@ -61,3 +61,29 @@ if __name__ == "__main__":
     # plt.legend()
     plt.show()
 
+
+def plot_data_time_relaxation():
+    path = r'./plots/data_before_time_relaxation/'
+    loc_bar_lst = [0.5, 0.6, 0.7, 0.8, 0.9]
+    for loc_bar in loc_bar_lst:
+        path2 = 'location_{}/'.format(round(loc_bar, 1))
+        file_name = 'en_func_entr.txt'
+        # file_name = 'full_en_lst.txt'
+        y_values = read_file(path + path2 + file_name)
+        file_name = 'time_lst.txt'
+        time_lst = read_file(path + path2 + file_name)
+
+        plt.figure(2)
+        plt.plot(time_lst[1:], y_values, label='loc={0}, tau={1}'.format(loc_bar, round(time_lst[-1], 3)))
+
+    plt.legend()
+    plt.xlabel('Time, sec')
+    # plt.ylabel('Functional')
+    plt.ylabel('Full energy')
+    plt.grid()
+    plt.show()
+
+
+if __name__ == "__main__":
+    # plot_data_on_cut_files()
+    plot_data_time_relaxation()
