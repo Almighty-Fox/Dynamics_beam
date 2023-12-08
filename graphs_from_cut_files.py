@@ -63,18 +63,18 @@ def plot_data_on_cut_files():
 
 
 def plot_data_time_relaxation():
-    path = r'./plots/data_before_time_relaxation/'
-    loc_bar_lst = [0.5, 0.6, 0.7, 0.8, 0.9]
+    path = r'./plots/data_before_time_relaxation/Impuls_loading/impulse_period_1e_2/damp_0.0015/'
+    loc_bar_lst = [0.0, 0.5, 0.6, 0.7, 0.8, 0.9]
     for loc_bar in loc_bar_lst:
         path2 = 'location_{}/'.format(round(loc_bar, 1))
-        file_name = 'en_func_entr.txt'
-        # file_name = 'full_en_lst.txt'
+        # file_name = 'en_func_2.txt'
+        file_name = 'full_en_lst.txt'
         y_values = read_file(path + path2 + file_name)
         file_name = 'time_lst.txt'
         time_lst = read_file(path + path2 + file_name)
 
         plt.figure(2)
-        plt.plot(time_lst[1:], y_values, label='loc={0}, tau={1}'.format(loc_bar, round(time_lst[-1], 3)))
+        plt.plot(time_lst[1:], y_values[1:], label='loc={0}, tau={1}'.format(loc_bar, round(time_lst[-1], 3)))
 
     plt.legend()
     plt.xlabel('Time, sec')

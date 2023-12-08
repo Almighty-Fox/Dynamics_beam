@@ -67,7 +67,7 @@ def create_VI_force(global_force, point_bar, delta, dis_i_bar, vel_i_bar, vel_i_
 
 
 def open_file_earthquake_data():
-    file_name = r'D:\Beam\PEERNGARecords_Unscaled\RSN1106_KOBE_KJM000.AT2'
+    file_name = r'C:\Technion\Beam\PEERNGARecords_Unscaled\RSN1106_KOBE_KJM000.AT2'
     with open(file_name, 'r') as cur_file:
         body = cur_file.readlines()
 
@@ -102,6 +102,16 @@ def create_impulse_earthquake_data():  # создаем импульсное п�
     omega_impulse = 2 * np.pi * (1 / (impulse_period * 2))
     y_impulse = -ampl_impulse * np.sin(omega_impulse * x_impulse)
     all_data = list(y_impulse) + [0] * (points - len(y_impulse))
+
+    return time_step, all_data, impulse_period
+
+
+def create_zero_earthquake_data():  # создаем ZERO поле ускорений
+    points = 75000
+    impulse_period = 0
+    time_step = 1e-4
+
+    all_data = [0] * points
 
     return time_step, all_data, impulse_period
 

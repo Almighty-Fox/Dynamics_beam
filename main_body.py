@@ -49,7 +49,7 @@ def main_body_fun(loc_bar=0.9):
     eigenvalues, eigenvectors_normalized = create_modal_matrix(global_stiffness, global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
 
     # ksi_list = np.array([0.03] * (2 * MaxNode))
-    ksi_list = np.array([0, 0.015, 0.015, 0.015, 0.015, 0] + [0.015] * 36)
+    ksi_list = np.array([0, 0.0015, 0.0015, 0.0015, 0.0015, 0] + [0.0015] * 36)
     # ksi_list = np.array([0.0] * (2 * MaxNode))
 
     list_diag_damping_modal = 2 * ksi_list * (eigenvalues ** 0.5)
@@ -90,11 +90,12 @@ def main_body_fun(loc_bar=0.9):
     time_force = [global_force[point_bar, 0]]  # запоминаем з-ть VI силы
     time_lst = [0]  # массив времени
 
-    step_plot = 1000  # каждый 200ый шаг выводим графики
+    step_plot = 3000  # каждый 200ый шаг выводим графики
     number_mode_plot = 10  # количество мод, которое выводим на графиках
     full_en_lst = [0]  # массив полной энергии стержня, кин + потен
     earthquake_en_lst = [0]  # массив энергии, переданной балке через силы инерции
     en_func = []  # лист функционала энергии
+    en_func_2 = []  # лист второго функционала энергии
     time_en_func = []  # лист времени для массива функционала энергии
     file_num = 1  # порядковый номер текстового файла, в который записываем очередную порцию дданных
     is_plot = False
@@ -111,7 +112,7 @@ def main_body_fun(loc_bar=0.9):
     axs[1][0].plot(time_lst, time_disp, 'g', linewidth=1)
     axs[1][0].plot(time_lst, time_disp_end, 'k', linewidth=1)
     axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)
-    plt.pause(7)
+    plt.pause(2)
     axs[0][0].clear()
     axs[1][0].clear()
     axs[2][0].clear()
@@ -131,6 +132,7 @@ def main_body_fun(loc_bar=0.9):
     # normal_fr = np.sqrt(2688.5 / 244.98707749566427)  # нормализуем землетрясение в Кобе, сужаем акселлелограмму, что бы несущая частота совпала с первой частотой колебания балки
 
     earthquake_time_step, earthquake_all_data, impulse_period = create_impulse_earthquake_data()  # создаем импульсное поле ускорений
+    # earthquake_time_step, earthquake_all_data, impulse_period = create_zero_earthquake_data()  # создаем ZERO поле ускорений
     normal_fr = 1
 
     earthquake_time_step = earthquake_time_step / normal_fr  # нормализация через изменение шага по времени акселерограммы
@@ -163,7 +165,7 @@ def main_body_fun(loc_bar=0.9):
 
     # начинаем цикл по времени
     t = 0
-    t_end = 0.4
+    t_end = 200.0
 
     dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
     # dt_lst = [1e-6] * 3  # лист временных шагов без барьера
@@ -284,7 +286,7 @@ def main_body_fun(loc_bar=0.9):
             time_force.append(VI_force)
             time_lst.append(t)
 
-            if (len(time_lst) % step_plot == 0) or (round(t, 8) == 0.06568748):
+            if (len(time_lst) % step_plot == 0):  # or (round(t, 8) == 0.14201218):
                 is_plot = True
             else:
                 is_plot = False
@@ -356,10 +358,12 @@ def main_body_fun(loc_bar=0.9):
                 omega_first = np.array([(eigenvalues[i]) ** 0.5 for i in [1, 2, 3, 4, 6, 7, 8, 9]])
                 energy_density = np.array([(en_cur / np.sum(energy_values)) for en_cur in energy_values])
                 en_func_cur = -np.sum(energy_density * np.log(energy_density))  # энтропия
-                # en_func_cur = np.sum(energy_density * omega_first)  # придуманный функционал
+                en_func_cur_2 = np.sum(energy_density * omega_first)  # придуманный функционал
                 en_func.append(en_func_cur)
+                en_func_2.append(en_func_cur_2)
             else:
                 en_func.append(0)
+                en_func_2.append(0)
             time_en_func.append(t)
 
             if is_plot:
@@ -397,11 +401,14 @@ def main_body_fun(loc_bar=0.9):
                     path_cur = path + file_name
                     plt.savefig(path_cur, bbox_inches='tight')
 
-                if round(t, 8) == 0.06568748:
-                    plt.savefig('./plots/small_damp.pdf', bbox_inches='tight')
+                # if round(t, 8) == 0.14201218:
+                #     file_name = 'small_damp.pdf'
+                #     path_cur = path + file_name
+                #     # plt.savefig(path_cur, bbox_inches='tight')
+                #     plt.savefig('./plots/small_damp.pdf', bbox_inches='tight')
 
-                plt.pause(0.000001)
-                # plt.pause(3)
+                plt.pause(0.01)
+                # plt.pause(10)
                 axs[0][0].clear()
                 axs[1][0].clear()
                 axs[2][0].clear()
@@ -435,21 +442,23 @@ def main_body_fun(loc_bar=0.9):
             #     time_disp_end, time_disp, time_lst, time_force, full_en_lst, earthquake_en_lst, en_func, time_en_func = [], [], [], [], [], [], [], []
             #     # ------------------------------------------------------------------------------
 
-        # # когда наступило время релаксации сохраняем данные в файлы
-        # with open(path + 'time_disp_end.txt', 'w') as cur_file:
-        #     cur_file.write(str(time_disp_end))
-        # with open(path + 'time_disp.txt', 'w') as cur_file:
-        #     cur_file.write(str(time_disp))
-        # with open(path + 'time_lst.txt', 'w') as cur_file:
-        #     cur_file.write(str(time_lst))
-        # with open(path + 'time_force.txt', 'w') as cur_file:
-        #     cur_file.write(str(time_force))
-        # with open(path + 'full_en_lst.txt', 'w') as cur_file:
-        #     cur_file.write(str(full_en_lst))
-        # with open(path + 'earthquake_en_lst.txt', 'w') as cur_file:
-        #     cur_file.write(str(earthquake_en_lst))
-        # with open(path + 'en_func.txt', 'w') as cur_file:
-        #     cur_file.write(str(en_func))
+        # когда наступило время релаксации сохраняем данные в файлы
+        with open(path + 'time_disp_end.txt', 'w') as cur_file:
+            cur_file.write(str(time_disp_end))
+        with open(path + 'time_disp.txt', 'w') as cur_file:
+            cur_file.write(str(time_disp))
+        with open(path + 'time_lst.txt', 'w') as cur_file:
+            cur_file.write(str(time_lst))
+        with open(path + 'time_force.txt', 'w') as cur_file:
+            cur_file.write(str(time_force))
+        with open(path + 'full_en_lst.txt', 'w') as cur_file:
+            cur_file.write(str(full_en_lst))
+        with open(path + 'earthquake_en_lst.txt', 'w') as cur_file:
+            cur_file.write(str(earthquake_en_lst))
+        with open(path + 'en_func.txt', 'w') as cur_file:
+            cur_file.write(str(en_func))
+        with open(path + 'en_func_2.txt', 'w') as cur_file:
+            cur_file.write(str(en_func_2))
 
     except KeyboardInterrupt:
         return
@@ -468,7 +477,7 @@ if __name__ == '__main__':
     #     main_body_fun(loc_bar=loc_bar)
     #     plt.close()
 
-    loc_bar = 0.9
+    loc_bar = 0.8
     path = './plots/location_{}/'.format(round(loc_bar, 1))
     os.mkdir(path)
     # with open(path + 'readme.txt', 'w') as f:
@@ -477,7 +486,7 @@ if __name__ == '__main__':
 
     # loc_bar_list = np.arange(0.9, 0.4, -0.1)
     # for loc_bar in loc_bar_list:
-    #     path = './plots/location_{}/'.format(round(loc_bar, 1))
+    #     path = './plots/data_before_time_relaxation/impuls_loading/impulse_period_1e_2/damp_0.0015/location_{}/'.format(round(loc_bar, 1))
     #     os.mkdir(path)
     #
     #     main_body_fun(loc_bar=loc_bar)
