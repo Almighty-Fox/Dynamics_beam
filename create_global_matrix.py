@@ -119,7 +119,7 @@ def create_zero_earthquake_data():  # создаем ZERO поле ускоре�
 # инерционная сила при землетрясении
 def earthquake_force(global_force, earth_acceleration, dm):
 
-    global_force[2::2, 0] = -earth_acceleration * dm
+    global_force[2::2, 0] = -earth_acceleration * 9.8 * dm
 
     return global_force
 

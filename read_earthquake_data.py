@@ -12,7 +12,7 @@ def find_files_with_extension(folder_path, extension):
                 file_list.append(os.path.join(root, file))
     return file_list
 
-folder_path = r'D:\Beam\PEERNGARecords_Unscaled'
+folder_path = r'C:\Technion\Beam\PEERNGARecords_Unscaled'
 extension = '.AT2'
 
 file_list = find_files_with_extension(folder_path, extension)
@@ -109,8 +109,8 @@ print('Omega = ', np.sqrt(basic_omega_2))
 normal_fr = 1
 time_lst_norm = time_lst / normal_fr
 
-time_start = 4.3
-time_end = 9.92
+time_start = 4.36
+time_end = 23.71783
 
 def cut_list(lst, value):
     id_cut = 0
@@ -124,12 +124,14 @@ def cut_list(lst, value):
 i_start = cut_list(time_lst_norm, time_start)
 i_end = cut_list(time_lst_norm, time_end)
 
-scale_acc = max(all_data[i_start:i_end])
+# scale_acc = max(all_data[i_start:i_end])
+scale_acc_pos = max(all_data[:])
+scale_acc_neg = min(all_data[:])
 
 plt.figure()
 plt.plot(time_lst_norm, all_data)
-plt.plot([time_lst_norm[i_start], time_lst_norm[i_start]], [0, scale_acc], 'r--')
-plt.plot([time_lst_norm[i_end], time_lst_norm[i_end]], [0, scale_acc], 'r--')
+plt.plot([time_lst_norm[i_start], time_lst_norm[i_start]], [scale_acc_neg, scale_acc_pos], 'r--')
+plt.plot([time_lst_norm[i_end], time_lst_norm[i_end]], [scale_acc_neg, scale_acc_pos], 'r--')
 plt.grid()
 plt.xlabel('Time, sec')
 plt.ylabel('Acceleration, g')
