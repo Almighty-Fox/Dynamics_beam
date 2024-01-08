@@ -100,7 +100,7 @@ def main_body_fun(loc_bar=0.9):
     file_num = 1  # порядковый номер текстового файла, в который записываем очередную порцию дданных
     is_plot = False
 
-    fig, axs = plt.subplots(3, 2)
+    fig, axs = plt.subplots(3, 3)
     plt.subplots_adjust(wspace=0.4, hspace=0.8)
     # fig.suptitle('ГРАФИКИ')
     axs[0][0].set_title('Beam shape')
@@ -281,6 +281,15 @@ def main_body_fun(loc_bar=0.9):
             vel_i = vel_i1.copy()
             acc_i = acc_i1.copy()
 
+            # ----------считаем напряжения в балке----------
+            dis_i_stress = np.array([dis_i[i * 2, 0] for i in range(MaxNode)])
+            dis_i_i = dis_i_stress[1:-1]
+            dis_i_minus = dis_i_stress[2:]
+            dis_i_plus = dis_i_stress[:-2]
+            dis_i_double_derivative = (dis_i_minus - 2 * dis_i_i + dis_i_plus) / dl**2
+            beam_stress = dis_i_double_derivative * E * a / 2
+            # ----------------------------------------------
+
             time_disp.append(dis_i1[point_bar, 0])
             time_disp_end.append(dis_i1[-2, 0])
             # time_force.append(global_force[point_bar, 0])
@@ -294,7 +303,7 @@ def main_body_fun(loc_bar=0.9):
 
             if is_plot:
                 axs[0][0].set_title('Beam shape')
-                axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=10, pad=0)
+                axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=7, pad=0)
                 axs[2][0].set_title('VI force')
                 # fig.suptitle('Time = ' + str('%.2f' % t)
                 #              + ' s = ' + str('%.2f' % (t * 1e3)) + ' ms = ' + str('%.2f' % (t * 1e6)) + ' µs')
@@ -314,6 +323,11 @@ def main_body_fun(loc_bar=0.9):
                 axs[1][0].plot(time_lst, [-delta] * len(time_lst), 'r--', linewidth=1)  # барьер
 
                 axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)  # временная з-ть силы VI
+
+                # ---------- PLOT STRESS ------------
+                axs[0][2].set_title('Stress')
+                axs[0][2].plot(np.linspace(0, L, num=MaxNode)[1:-1], beam_stress, 'r',
+                               linewidth=1)  # напряжение в балке
 
             # ----------- выводим график полной энергии --------
             dis_i_transp = [disp for sublist in dis_i for disp in sublist]
@@ -369,7 +383,7 @@ def main_body_fun(loc_bar=0.9):
 
             if is_plot:
                 df = pd.DataFrame(full_en_mode, columns=['origin'], index=range(1, len(modal_vel_i_transp) + 1))
-                axs[1][1].set_title('Energy distribution over modes\nMax energy = {} %'.format(round(max(df.origin[:number_mode_plot]) / sum(df.origin[:number_mode_plot]) * 100)), fontsize=10, pad=0)
+                axs[1][1].set_title('Energy distribution over modes\nMax energy = {} %'.format(round(max(df.origin[:number_mode_plot]) / sum(df.origin[:number_mode_plot]) * 100)), fontsize=7, pad=0)
                 # axs[1][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot])
                 axs[1][1].bar(np.arange(1, number_mode_plot - 1), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 6, 7, 8, 9]])
                 # axs[1][1].axis([0, df.index[number_mode_plot], 0, 1e-3])
@@ -416,6 +430,7 @@ def main_body_fun(loc_bar=0.9):
                 axs[0][1].clear()
                 axs[1][1].clear()
                 axs[2][1].clear()
+                axs[0][2].clear()
 
             # для экономии времени записи листов в файл и экономии места в этих листах, будем каждые сколько то шагов сбрасывать значения в новый файл и обнулять листы
             if len(time_lst) % (step_plot * 500) == 0:
