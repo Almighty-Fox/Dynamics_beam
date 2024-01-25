@@ -26,7 +26,7 @@ def data_on_cut_files(path, main_file_name):
 
 
 def plot_data_on_cut_files():
-    # plt.figure(1)
+    plt.figure(1)
 
     # plt.title('Energy functional', pad=8)
     # plt.xlabel('time, sec')
@@ -70,33 +70,20 @@ def plot_data_on_cut_files():
     # plt.legend()
     # # plt.show()
 
-    loc_bar = 0.9
-    path = './plots/location_0.8_right/'.format(round(loc_bar, 1))
-    # en_func = data_on_cut_files('en_func')
-    en_func_2 = data_on_cut_files(path, 'time_force')
-    # work_earth = data_on_cut_files(path, 'earthquake_en_lst')
-    print(len(en_func_2))
-    time_en_func_2 = data_on_cut_files(path, 'time_lst')
-    # # plt.plot(time_en_func, en_func, color='k', label=f'loc = {loc_bar}', linestyle='--')
-    # plt.figure(2)
-    # plt.plot(time_en_func_2, np.array(work_earth), color='g', label='work_earth', linestyle='-',
-    #          linewidth=2)
-    # plt.plot(time_en_func_2, np.array(en_func_2), color='r', label='full', linestyle='-',
-    #          linewidth=2)
-    # plt.plot(time_en_func_2, np.array(work_earth) - np.array(en_func_2), color='k', label='diff', linestyle='-',
-    #          linewidth=2)  # label='Point opposite the barrier'  # linestyle='--'
-    #
-    # plt.title('Energy')
-    # plt.xlabel('Time, sec')
-    # plt.grid()
-    # plt.legend()
-    # # plt.show()
+    loc_bar = 0.8
+    path = './plots/calc_stress/location_0.8_stress_kc_100/'.format(round(loc_bar, 1))
+    x_axis = data_on_cut_files(path, 'time_lst')
+    y_axis = data_on_cut_files(path, 'earthquake_en_lst')
+    plt.plot(x_axis, y_axis, color='g', label='work earth', linestyle='-', linewidth=2)  # label=f'loc = {loc_bar}'
 
-    plt.figure(3)
-    # plt.plot(time_en_func_1[1:], np.array(en_func_1[1:]), color='g', label='linear', linestyle='-',
-    #          linewidth=2)
-    plt.plot(time_en_func_2[1:], np.array(en_func_2[1:]), color='k', label='VI', linestyle='-',
-             linewidth=1)
+    y_axis_2 = data_on_cut_files(path, 'full_en_lst')
+    plt.plot(x_axis, y_axis_2, color='r', label='full', linestyle='-', linewidth=2)  # label=f'loc = {loc_bar}'
+
+    plt.plot(x_axis, np.array(y_axis) - np.array(y_axis_2), color='k', label='diff', linestyle='-', linewidth=2)  # label=f'loc = {loc_bar}'
+
+    plt.title('Energy, J, kc=100')
+
+
 
     # plt.title('Full Energy')
     plt.xlabel('Time, sec')
@@ -126,6 +113,35 @@ def plot_data_time_relaxation():
     plt.show()
 
 
+def plot_fit_an_fem():
+    path = r'./plots/fit_an_fem/analytics_start_deformation_loc_0_8_dynamic_step/'
+    # file_name = 'Analytics_write_disp_end.txt'
+    file_name = 'Analytics_write_disp_barrier.txt'
+    y_values = read_file(path + file_name)
+    file_name = 'Analytics_write_time.txt'
+    time_lst = read_file(path + file_name)
+
+    plt.figure(1)
+    plt.plot(time_lst, y_values, 'k', label='analytics')
+
+    path = r'./plots/fit_an_fem/location_0.8_better/'
+    # file_name = 'time_disp_end_last.txt'
+    file_name = 'time_disp_1.txt'
+    y_values = read_file(path + file_name)
+    file_name = 'time_lst_1.txt'
+    time_lst = read_file(path + file_name)
+
+    plt.plot(time_lst, y_values, 'r--', label='FEM')
+
+    plt.legend()
+    plt.xlabel('Time, sec')
+    # plt.ylabel('Functional')
+    plt.ylabel('Beam end coordinate, m')
+    plt.grid()
+    plt.show()
+
+
 if __name__ == "__main__":
-    plot_data_on_cut_files()
+    # plot_data_on_cut_files()
+    plot_fit_an_fem()
     # plot_data_time_relaxation()

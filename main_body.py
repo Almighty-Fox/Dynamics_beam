@@ -44,13 +44,13 @@ def main_body_fun(loc_bar=0.9):
     # print(global_mass)
 
     global_force = np.zeros((2 * MaxNode, 1))  # создаем размер глобального вектора сил
-    global_force = create_global_force(global_force, f_ampl=0)  # создаем начальный вектор сил
+    global_force = create_global_force(global_force, f_ampl=1)  # создаем начальный вектор сил
 
     eigenvalues, eigenvectors_normalized = create_modal_matrix(global_stiffness, global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
 
     # ksi_list = np.array([0.03] * (2 * MaxNode))
-    ksi_list = np.array([0, 0.015, 0.015, 0.015, 0.015, 0] + [0.015] * 36)
-    # ksi_list = np.array([0.0] * (2 * MaxNode))
+    # ksi_list = np.array([0, 0.015, 0.015, 0.015, 0.015, 0] + [0.015] * 36)
+    ksi_list = np.array([0.0] * (2 * MaxNode))
 
     list_diag_damping_modal = 2 * ksi_list * (eigenvalues ** 0.5)
     global_damping_modal = np.diag(list_diag_damping_modal)
@@ -99,6 +99,8 @@ def main_body_fun(loc_bar=0.9):
     time_en_func = []  # лист времени для массива функционала энергии
     file_num = 1  # порядковый номер текстового файла, в который записываем очередную порцию дданных
     is_plot = False
+    cantilever_stress_lst = []
+    contact_stress_lst = []
 
     fig, axs = plt.subplots(3, 3)
     plt.subplots_adjust(wspace=0.4, hspace=0.8)
@@ -118,7 +120,8 @@ def main_body_fun(loc_bar=0.9):
     axs[2][0].clear()
 
     # ------- для вычисления силы VI ----------------------
-    k_c = 100 * 2 * E * (10e-3 ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
+    R_barrier = 10e-3
+    k_c = 2 * E * (R_barrier ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
     print('k_c = {}'.format(k_c))
     vel_i_before = vel_i[point_bar, 0]
     dis_i_before = dis_i[point_bar, 0]
@@ -128,35 +131,35 @@ def main_body_fun(loc_bar=0.9):
 
     # ------- EARTHQUAKE ----------------
 
-    earthquake_time_step, earthquake_all_data = open_file_earthquake_data()  # записываем шаг акселерограммы и данные землетрясения
-    normal_fr = np.sqrt(2688.5 / 324)  # нормализуем землетрясение в Кобе, сужаем акселлелограмму, что бы несущая частота совпала с первой частотой колебания балки
+    # earthquake_time_step, earthquake_all_data = open_file_earthquake_data()  # записываем шаг акселерограммы и данные землетрясения
+    # normal_fr = np.sqrt(2688.5 / 324)  # нормализуем землетрясение в Кобе, сужаем акселлелограмму, что бы несущая частота совпала с первой частотой колебания балки
 
     # earthquake_time_step, earthquake_all_data, impulse_period = create_impulse_earthquake_data()  # создаем импульсное поле ускорений
-    # earthquake_time_step, earthquake_all_data, impulse_period = create_zero_earthquake_data()  # создаем ZERO поле ускорений
-    # normal_fr = 1
+    earthquake_time_step, earthquake_all_data, impulse_period = create_zero_earthquake_data()  # создаем ZERO поле ускорений
+    normal_fr = 1
 
     earthquake_time_lst = np.linspace(0, (len(earthquake_all_data) - 1) * earthquake_time_step, len(earthquake_all_data))  # нормализированный массив времени для акселерограммы
 
-    # вырезаем из акселлелограммы только интересующий нас интервал
-    # -------------------
-    def cut_list(lst, value):
-        id_cut = 0
-        for i in range(len(lst)):
-            if lst[i] > value:
-                id_cut = i
-                break
-        return id_cut
-
-    # time_start = 7.38
-    time_start = 4.36  # начало нужного участка
-    time_end = 25  # конец
-    i_start = cut_list(earthquake_time_lst, time_start)
-    i_end = cut_list(earthquake_time_lst, time_end)
-
-    earthquake_all_data = earthquake_all_data[i_start:i_end]  # оставляем нужный интервал
-    earthquake_time_step = earthquake_time_step / normal_fr  # нормализация через изменение шага по времени акселерограммы
-    # earthquake_all_data = earthquake_all_data[:]  # оставляем нужный интервал
-    # -------------------
+    # # вырезаем из акселлелограммы только интересующий нас интервал
+    # # -------------------
+    # def cut_list(lst, value):
+    #     id_cut = 0
+    #     for i in range(len(lst)):
+    #         if lst[i] > value:
+    #             id_cut = i
+    #             break
+    #     return id_cut
+    #
+    # # time_start = 7.38
+    # time_start = 4.36  # начало нужного участка
+    # time_end = 25  # конец
+    # i_start = cut_list(earthquake_time_lst, time_start)
+    # i_end = cut_list(earthquake_time_lst, time_end)
+    #
+    # earthquake_all_data = earthquake_all_data[i_start:i_end]  # оставляем нужный интервал
+    # earthquake_time_step = earthquake_time_step / normal_fr  # нормализация через изменение шага по времени акселерограммы
+    # # earthquake_all_data = earthquake_all_data[:]  # оставляем нужный интервал
+    # # -------------------
 
     # -------------------
     # инвентируем массив данных акселерограммы, что бы читать с конца и постепенно отрезать с помощью pop
@@ -166,10 +169,10 @@ def main_body_fun(loc_bar=0.9):
 
     # начинаем цикл по времени
     t = 0
-    t_end = 6.720075660561884
+    t_end = 0.15
 
-    # dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
-    dt_lst = [1e-6] * 3  # лист временных шагов без барьера
+    dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
+    # dt_lst = [1e-6] * 3  # лист временных шагов без барьера
     # Начинаем с самого большого шага. Если этим большим шагом зашли вовнутрь барьера, то откываемся на шаг цикла назад и меняем временной шаг на следующий в листе.
     # Так делаем до тех пор, пока шаг не станет самым маленьким из списка. Потом считаем на этом шаге, но как только балка выйдет из барьера, каждый
     # следующий шаг делаем на один больше из списка.
@@ -215,9 +218,9 @@ def main_body_fun(loc_bar=0.9):
                 # print('Действует сила')
 
                 # гасим в случае, когда фигачим без барьера
-                # global_force, VI_force = create_VI_force(global_force, point_bar, delta, dis_i[point_bar, 0], vel_i[point_bar, 0],
-                #                                vel_i_before, k_c, restitution=0.7)
-                pass
+                global_force, VI_force = create_VI_force(global_force, point_bar, delta, dis_i[point_bar, 0], vel_i[point_bar, 0],
+                                               vel_i_before, k_c, restitution=0.7)
+                # pass
             else:
                 # vel_i_before = vel_i[point_bar, 0]
                 # dis_i_before = dis_i[point_bar, 0]
@@ -288,6 +291,11 @@ def main_body_fun(loc_bar=0.9):
             dis_i_plus = dis_i_stress[:-2]
             dis_i_double_derivative = (dis_i_minus - 2 * dis_i_i + dis_i_plus) / dl**2
             beam_stress = dis_i_double_derivative * E * a / 2
+            cantilever_stress_lst.append((beam_stress[0] + beam_stress[1]) / 2)  # напряжение в заделке как среднее от двух крайних левых узлов
+
+            # contact stress Pa
+            contact_stress = 0.388 * (VI_force * E ** 2 / R_barrier ** 2) ** (1/3)
+            contact_stress_lst.append(contact_stress)
             # ----------------------------------------------
 
             time_disp.append(dis_i1[point_bar, 0])
@@ -295,6 +303,7 @@ def main_body_fun(loc_bar=0.9):
             # time_force.append(global_force[point_bar, 0])
             time_force.append(VI_force)
             time_lst.append(t)
+            time_en_func.append(t)  # переместили сюда, что бы строить графики напряжений, которые шли до этой команды
 
             if (len(time_lst) % step_plot == 0):  # or (round(t, 8) == 0.14201218):
                 is_plot = True
@@ -328,6 +337,14 @@ def main_body_fun(loc_bar=0.9):
                 axs[0][2].set_title('Stress')
                 axs[0][2].plot(np.linspace(0, L, num=MaxNode)[1:-1], beam_stress, 'r',
                                linewidth=1)  # напряжение в балке
+                axs[1][2].set_title('Cantilever Stress')
+                axs[1][2].plot(time_en_func, cantilever_stress_lst, 'b',
+                               linewidth=1)  # напряжение в заделке
+
+                axs[2][2].set_title('Contact Stress')
+                axs[2][2].plot(time_en_func, contact_stress_lst, 'k',
+                               linewidth=1)  # contact stress
+
 
             # ----------- выводим график полной энергии --------
             dis_i_transp = [disp for sublist in dis_i for disp in sublist]
@@ -379,7 +396,7 @@ def main_body_fun(loc_bar=0.9):
             else:
                 en_func.append(0)
                 en_func_2.append(0)
-            time_en_func.append(t)
+            # time_en_func.append(t)  # перемстили выше, чтобы строить графики напряжений
 
             if is_plot:
                 df = pd.DataFrame(full_en_mode, columns=['origin'], index=range(1, len(modal_vel_i_transp) + 1))
@@ -431,6 +448,8 @@ def main_body_fun(loc_bar=0.9):
                 axs[1][1].clear()
                 axs[2][1].clear()
                 axs[0][2].clear()
+                axs[1][2].clear()
+                axs[2][2].clear()
 
             # для экономии времени записи листов в файл и экономии места в этих листах, будем каждые сколько то шагов сбрасывать значения в новый файл и обнулять листы
             if len(time_lst) % (step_plot * 500) == 0:
@@ -453,9 +472,15 @@ def main_body_fun(loc_bar=0.9):
                 with open(path + 'en_func_2_{}.txt'.format(file_num), 'w') as cur_file:
                     cur_file.write(str(en_func_2))
 
+                with open(path + 'cantilever_stress_lst_{}.txt'.format(file_num), 'w') as cur_file:
+                    cur_file.write(str(cantilever_stress_lst))
+                with open(path + 'contact_stress_lst_{}.txt'.format(file_num), 'w') as cur_file:
+                    cur_file.write(str(contact_stress_lst))
+
                 file_num += 1
 
                 time_disp_end, time_disp, time_lst, time_force, full_en_lst, earthquake_en_lst, en_func, time_en_func, en_func_2 = [], [], [], [], [], [], [], [], []
+                cantilever_stress_lst, contact_stress_lst = [], []
                 # ------------------------------------------------------------------------------
 
         # когда наступило время релаксации сохраняем данные в файлы
@@ -476,6 +501,11 @@ def main_body_fun(loc_bar=0.9):
         with open(path + 'en_func_2_last.txt', 'w') as cur_file:
             cur_file.write(str(en_func_2))
 
+        with open(path + 'cantilever_stress_lst_last.txt', 'w') as cur_file:
+            cur_file.write(str(cantilever_stress_lst))
+        with open(path + 'contact_stress_lst_last.txt', 'w') as cur_file:
+            cur_file.write(str(contact_stress_lst))
+
     except KeyboardInterrupt:
         return
 
@@ -493,7 +523,7 @@ if __name__ == '__main__':
     #     main_body_fun(loc_bar=loc_bar)
     #     plt.close()
 
-    loc_bar = 0.8
+    loc_bar = 0.9
     path = './plots/location_{}/'.format(round(loc_bar, 1))
     os.mkdir(path)
     # with open(path + 'readme.txt', 'w') as f:
