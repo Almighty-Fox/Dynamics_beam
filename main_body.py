@@ -20,7 +20,8 @@ def main_body_fun(loc_bar=0.9):
     nu = 0.3  # коэффициент Пуассона
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
-    MaxNode = 20 + 1  # количество узлов
+    # MaxNode = 20 + 1  # количество узлов
+    MaxNode = 200 + 1  # количество узлов
     dl = L / (MaxNode - 1)
     dm = dl * ro
     # ---------определяем параметры временного шага----------
@@ -47,6 +48,7 @@ def main_body_fun(loc_bar=0.9):
     global_force = create_global_force(global_force, f_ampl=1)  # создаем начальный вектор сил
 
     eigenvalues, eigenvectors_normalized = create_modal_matrix(global_stiffness, global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
+    print((ro / E / I_inertia * np.array(eigenvalues[:10])) ** (1/4))
 
     # ksi_list = np.array([0.03] * (2 * MaxNode))
     # ksi_list = np.array([0, 0.015, 0.015, 0.015, 0.015, 0] + [0.015] * 36)
@@ -523,7 +525,7 @@ if __name__ == '__main__':
     #     main_body_fun(loc_bar=loc_bar)
     #     plt.close()
 
-    loc_bar = 0.9
+    loc_bar = 0.8
     path = './plots/location_{}/'.format(round(loc_bar, 1))
     os.mkdir(path)
     # with open(path + 'readme.txt', 'w') as f:

@@ -23,6 +23,14 @@ def global_stiffness_matrix_with_GU(global_stiffness):
     global_stiffness[0, 0] = 1
     global_stiffness[1, 1] = 1
 
+    # С учетом ограничения барьера
+    # MaxNode = 200 + 1  # количество узлов
+    # loc_bar = 0.8
+    # point_bar = round((MaxNode - 1) * loc_bar) * 2
+    # global_stiffness[point_bar, :] = 0
+    # global_stiffness[:, point_bar] = 0
+    # global_stiffness[point_bar, point_bar] = 1
+
     return global_stiffness
 
 
@@ -134,6 +142,9 @@ def create_modal_matrix(K, M):
     # Print the eigenvalues
     print("Eigenvalues:")
     print(eigenvalues)
+
+    print("Eigenvalues (sqrt):")
+    print(np.sqrt(np.array(eigenvalues)))
 
     # Print the eigenvectors
     print("Eigenvectors:")

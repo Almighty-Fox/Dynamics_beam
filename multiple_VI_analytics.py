@@ -6,12 +6,13 @@ import time
 import pandas as pd
 from class_beam_elements import Class_beam_elements
 from create_global_matrix import *
+from scipy.optimize import fsolve
 
 
 # определяем частоты, формы и коэф (D = form ** 2) для балки без барьера
 def beam_without_barrier():
-    # al_l = np.arange(0, 15, 0.00001)
     al_l = np.arange(0, 12, 0.00001)
+    # al_l = np.arange(0, 12, 0.00001)
     fun1 = np.sinh(al_l) * np.cos(al_l) + 1
     roots1 = []
     omega1 = []
@@ -21,7 +22,21 @@ def beam_without_barrier():
             roots1.append(roots1_i)
             omega1.append((roots1_i / l2) ** 2 * np.power((E * J_inertia / ro / S), (1 / 2)))
 
-    print(roots1)
+    print('no VI om2 = ', str(E * J_inertia / ro / S * np.array(roots1) ** 4))
+    print('original roots1 = ' + str(roots1))
+    # -------------------------------------------------------------------------------------
+    # # берем корни из Ансиса
+    # roots1 = (ro * S / E / J_inertia) ** (1 / 4) * (
+    #         np.array([8.1532, 51.071, 142.89, 279.7, 461.7, 688.48, 959.59, 1274.5]) * l2 * 2 * np.pi) ** (1 / 2)
+    # roots1 = [1.87510482,  4.69409107,  7.85475745, 10.99554077, 14.13716852, 17.27875988, 20.42035305, 23.56194654]
+    #
+    # omega1 = []
+    # for roots1_i in roots1:
+    #     omega1.append(np.sqrt(E * J_inertia / ro / S) * (roots1_i ** 2))
+    # print('ansys roots1 = ' + str(roots1))
+    # -------------------------------------------------------------------------------------
+
+    print('Freq no VI = ' + str(roots1))
     D1 = []
     forms1 = []
     form1_second_dif = []
@@ -172,34 +187,34 @@ def beam_no_VI_vibrations(disp_start, vel_start):
 # определяем частоты, формы и коэф (D = form ** 2) для балки с барьером
 def beam_with_barrier():
     # k = np.arange(0.0001, 18, 0.00001)  # лист значений каппы - замененная частота
-    k = np.arange(0.0001, 14, 0.00001)
-
-    A1 = ((k*np.cos(k*l1)-k*np.cosh(k*l1)) - (np.sin(k*l1) - np.sinh(k*l1))/(np.cos(k*l1)-np.cosh(k*l1))*(-k*np.sin(k*l1)-k*np.sinh(k*l1)))
-    A2 = ((-k**2*np.sin(k*l1)-k**2*np.sinh(k*l1)) - (np.sin(k*l1) - np.sinh(k*l1))/(np.cos(k*l1)-np.cosh(k*l1))*(-k**2*np.cos(k*l1)-k**2*np.cosh(k*l1)))
-
-    B1 = ((k*np.cos(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*k*np.cosh(k*l1) + (np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*k*np.sinh(k*l1)) -
-          (np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*np.cosh(k*l1))/
-          (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
-          (-k*np.sin(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k*np.cosh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k*np.sinh(k*l1)))
-
-    B2 = ((-k**2*np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*k**2*np.sinh(k*l1) + (np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*k**2*np.cosh(k*l1)) -
-          (np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*np.cosh(k*l1))/
-          (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
-          (-k**2*np.cos(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k**2*np.sinh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k**2*np.cosh(k*l1)))
-
+    # # k = np.arange(0.0001, 14, 0.00001)
+    #
+    # A1 = ((k*np.cos(k*l1)-k*np.cosh(k*l1)) - (np.sin(k*l1) - np.sinh(k*l1))/(np.cos(k*l1)-np.cosh(k*l1))*(-k*np.sin(k*l1)-k*np.sinh(k*l1)))
+    # A2 = ((-k**2*np.sin(k*l1)-k**2*np.sinh(k*l1)) - (np.sin(k*l1) - np.sinh(k*l1))/(np.cos(k*l1)-np.cosh(k*l1))*(-k**2*np.cos(k*l1)-k**2*np.cosh(k*l1)))
+    #
+    # B1 = ((k*np.cos(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*k*np.cosh(k*l1) + (np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*k*np.sinh(k*l1)) -
+    #       (np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*np.cosh(k*l1))/
+    #       (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
+    #       (-k*np.sin(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k*np.cosh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k*np.sinh(k*l1)))
+    #
+    # B2 = ((-k**2*np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*k**2*np.sinh(k*l1) + (np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*k**2*np.cosh(k*l1)) -
+    #       (np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*np.cosh(k*l1))/
+    #       (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
+    #       (-k**2*np.cos(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k**2*np.sinh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k**2*np.cosh(k*l1)))
+    #
     A1_fun = lambda k: ((k*np.cos(k*l1)-k*np.cosh(k*l1)) - (np.sin(k*l1) - np.sinh(k*l1))/(np.cos(k*l1)-np.cosh(k*l1))*(-k*np.sin(k*l1)-k*np.sinh(k*l1)))
-    A2_fun = lambda k: ((-k**2*np.sin(k*l1)-k**2*np.sinh(k*l1)) - (np.sin(k*l1) - np.sinh(k*l1))/(np.cos(k*l1)-np.cosh(k*l1))*(-k**2*np.cos(k*l1)-k**2*np.cosh(k*l1)))
-
+    # A2_fun = lambda k: ((-k**2*np.sin(k*l1)-k**2*np.sinh(k*l1)) - (np.sin(k*l1) - np.sinh(k*l1))/(np.cos(k*l1)-np.cosh(k*l1))*(-k**2*np.cos(k*l1)-k**2*np.cosh(k*l1)))
+    #
     B1_fun = lambda k: ((k*np.cos(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*k*np.cosh(k*l1) + (np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*k*np.sinh(k*l1)) -
           (np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*np.cosh(k*l1))/
           (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
           (-k*np.sin(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k*np.cosh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k*np.sinh(k*l1)))
-
-    B2_fun = lambda k: ((-k**2*np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*k**2*np.sinh(k*l1) + (np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*k**2*np.cosh(k*l1)) -
-          (np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*np.cosh(k*l1))/
-          (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
-          (-k**2*np.cos(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k**2*np.sinh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k**2*np.cosh(k*l1)))
-
+    #
+    # B2_fun = lambda k: ((-k**2*np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*k**2*np.sinh(k*l1) + (np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*k**2*np.cosh(k*l1)) -
+    #       (np.sin(k*l1)+(np.cos(k*l2)*np.cosh(k*l2)-np.sin(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.sin(k*l2)-np.cos(k*l2)*np.sinh(k*l2))*np.cosh(k*l1))/
+    #       (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
+    #       (-k**2*np.cos(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k**2*np.sinh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k**2*np.cosh(k*l1)))
+    #
     # для нахождения силы взаимодействия с барьером необходимо найти разрыв 3ей производной формы балки в точке барьера
     # третья производная формы левой части балки в точке барьера
     A3_fun = lambda k: ((-k**3*np.cos(k*l1)-k**3*np.cosh(k*l1)) - (np.sin(k*l1) - np.sinh(k*l1))/(np.cos(k*l1)-np.cosh(k*l1))*(k**3*np.sin(k*l1)-k**3*np.sinh(k*l1)))
@@ -209,20 +224,36 @@ def beam_with_barrier():
           (np.cos(k*l1) - (np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*np.sinh(k*l1)+(np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*np.cosh(k*l1)) *
           (k**3*np.sin(k*l1)-(np.sin(k*l2)*np.cosh(k*l2)+np.cos(k*l2)*np.sinh(k*l2))*k**3*np.cosh(k*l1) + (np.cosh(k*l2)*np.cos(k*l2)+np.sin(k*l2)*np.sinh(k*l2))*k**3*np.sinh(k*l1)))
 
-    fun2 = -A1 * B2 + A2 * B1
-    roots2 = []
-    omega2 = []
-    for i in range(len(fun2) - 1):
-        if (fun2[i] * fun2[i+1] < 0) and (abs(fun2[i] * fun2[i+1]) < 300):
-            roots2_i = (k[i] + k[i+1]) / 2
-            if (len(roots2) == 0) or (abs(roots2_i - roots2[-1]) > 1):
-                roots2.append(roots2_i)
-                omega2.append(np.sqrt(E * J_inertia / ro / S) * (roots2_i ** 2))
+    # fun2 = -A1 * B2 + A2 * B1
+    # roots2 = []
+    # omega2 = []
+    # for i in range(len(fun2) - 1):
+    #     if (fun2[i] * fun2[i+1] < 0) and (abs(fun2[i] * fun2[i+1]) < 300):
+    #         roots2_i = (k[i] + k[i+1]) / 2
+    #         if (len(roots2) == 0) or (abs(roots2_i - roots2[-1]) > 1):
+    #             roots2.append(roots2_i)
+    #             omega2.append(np.sqrt(E * J_inertia / ro / S) * (roots2_i ** 2))
+    #
+    # print(roots2)
 
-    # roots2 = roots2[:5]
-    print(roots2)
-    x5 = np.linspace(0, l2, point)[:round(l1 * point)]
-    x6 = np.linspace(0, l2, point)[round(l1 * point):]
+    # Более точные корни находим из аналогичной функции, но там в уравнениях нет знаменателей
+    roots2 = natural_freq_barrier_fsolve()
+    print('VI om2 = ', str(E * J_inertia / ro / S * np.array(roots2) ** 4))
+    omega2 = []
+    for roots2_i in roots2:
+        omega2.append(np.sqrt(E * J_inertia / ro / S) * (roots2_i ** 2))
+    # -------------------------------------------------------------------------------------
+
+    # -------------------------------------------------------------------------------------
+    # # берем корни из Ансиса
+    # roots2 = (ro * S / E / J_inertia) ** (1 / 4) * (
+    #             np.array([50.821, 121.27, 219.32, 409.51, 668.86, 952.95, 1132.0, 1461.1]) * 2 * np.pi) ** (1 / 2)
+    # print(roots2)
+    roots2 = [4.68258595, 7.23594079, 9.73637153, 13.31419042, 17.03171237, 20.34929044, 22.21264742, 25.26255485]
+    omega2 = []
+    for roots2_i in roots2:
+        omega2.append(np.sqrt(E * J_inertia / ro / S) * (roots2_i ** 2))
+    # # -------------------------------------------------------------------------------------
 
     D2 = []
     forms2 = []
@@ -276,6 +307,100 @@ def beam_with_barrier():
     return roots2, D2, forms2, omega2, Q_lst, form_barrier_second_dif_lst
 
 
+# определяем частоты, формы и коэф (D = form ** 2) для балки с барьером, убираем знаменатели и используем fsolve для уточнения корней
+def natural_freq_barrier_fsolve():
+    k = np.arange(0.0001, 18, 0.00001)  # лист значений каппы - замененная частота
+    # k = np.arange(0.0001, 14, 0.00001)
+
+    A1 = ((k * np.cos(k * l1) - k * np.cosh(k * l1)) * (np.cos(k * l1) - np.cosh(k * l1)) - (
+                np.sin(k * l1) - np.sinh(k * l1)) * (-k * np.sin(k * l1) - k * np.sinh(k * l1)))
+    A2 = ((-k ** 2 * np.sin(k * l1) - k ** 2 * np.sinh(k * l1)) * (np.cos(k * l1) - np.cosh(k * l1)) - (
+                np.sin(k * l1) - np.sinh(k * l1)) * (-k ** 2 * np.cos(k * l1) - k ** 2 * np.cosh(k * l1)))
+
+    B1 = ((k * np.cos(k * l1) + (np.cos(k * l2) * np.cosh(k * l2) - np.sin(k * l2) * np.sinh(k * l2)) * k * np.cosh(
+        k * l1) + (np.cosh(k * l2) * np.sin(k * l2) - np.cos(k * l2) * np.sinh(k * l2)) * k * np.sinh(k * l1)) * (
+                      np.cos(k * l1) - (np.sin(k * l2) * np.cosh(k * l2) + np.cos(k * l2) * np.sinh(k * l2)) * np.sinh(
+                  k * l1) + (np.cosh(k * l2) * np.cos(k * l2) + np.sin(k * l2) * np.sinh(k * l2)) * np.cosh(k * l1)) - (
+                      np.sin(k * l1) + (np.cos(k * l2) * np.cosh(k * l2) - np.sin(k * l2) * np.sinh(k * l2)) * np.sinh(
+                  k * l1) + (np.cosh(k * l2) * np.sin(k * l2) - np.cos(k * l2) * np.sinh(k * l2)) * np.cosh(k * l1)) * (
+                      -k * np.sin(k * l1) - (
+                          np.sin(k * l2) * np.cosh(k * l2) + np.cos(k * l2) * np.sinh(k * l2)) * k * np.cosh(k * l1) + (
+                                  np.cosh(k * l2) * np.cos(k * l2) + np.sin(k * l2) * np.sinh(k * l2)) * k * np.sinh(
+                  k * l1)))
+
+    B2 = ((-k ** 2 * np.sin(k * l1) + (
+                np.cos(k * l2) * np.cosh(k * l2) - np.sin(k * l2) * np.sinh(k * l2)) * k ** 2 * np.sinh(k * l1) + (
+                       np.cosh(k * l2) * np.sin(k * l2) - np.cos(k * l2) * np.sinh(k * l2)) * k ** 2 * np.cosh(
+        k * l1)) * (np.cos(k * l1) - (np.sin(k * l2) * np.cosh(k * l2) + np.cos(k * l2) * np.sinh(k * l2)) * np.sinh(
+        k * l1) + (np.cosh(k * l2) * np.cos(k * l2) + np.sin(k * l2) * np.sinh(k * l2)) * np.cosh(k * l1)) - (
+                      np.sin(k * l1) + (np.cos(k * l2) * np.cosh(k * l2) - np.sin(k * l2) * np.sinh(k * l2)) * np.sinh(
+                  k * l1) + (np.cosh(k * l2) * np.sin(k * l2) - np.cos(k * l2) * np.sinh(k * l2)) * np.cosh(k * l1)) * (
+                      -k ** 2 * np.cos(k * l1) - (
+                          np.sin(k * l2) * np.cosh(k * l2) + np.cos(k * l2) * np.sinh(k * l2)) * k ** 2 * np.sinh(
+                  k * l1) + (np.cosh(k * l2) * np.cos(k * l2) + np.sin(k * l2) * np.sinh(k * l2)) * k ** 2 * np.cosh(
+                  k * l1)))
+
+    fun2 = -A1 * B2 + A2 * B1
+    roots2 = []
+    omega2 = []
+    # for i in range(len(fun2) - 1):
+    #     if (fun2[i] * fun2[i + 1] < 0) and (abs(fun2[i] * fun2[i + 1]) < 300):
+    #         roots2_i = (k[i] + k[i + 1]) / 2
+    #         if (len(roots2) == 0) or (abs(roots2_i - roots2[-1]) > 1):
+    #             roots2.append(roots2_i)
+    #             omega2.append(np.sqrt(E * J_inertia / ro / S) * (roots2_i ** 2))
+
+    for i in range(len(fun2) - 1):
+        if (fun2[i] * fun2[i + 1] < 0):
+            roots2_i = (k[i] + k[i + 1]) / 2
+            if (len(roots2) == 0) or (abs(roots2_i - roots2[-1]) > 0.1):
+                roots2.append(roots2_i)
+                omega2.append(np.sqrt(E * J_inertia / ro / S) * (roots2_i ** 2))
+
+    print('Freq VI = ' + str(roots2))
+
+    A1_fun = lambda k: ((k * np.cos(k * l1) - k * np.cosh(k * l1)) * (np.cos(k * l1) - np.cosh(k * l1)) - (
+            np.sin(k * l1) - np.sinh(k * l1)) * (-k * np.sin(k * l1) - k * np.sinh(k * l1)))
+    A2_fun = lambda k: ((-k ** 2 * np.sin(k * l1) - k ** 2 * np.sinh(k * l1)) * (np.cos(k * l1) - np.cosh(k * l1)) - (
+            np.sin(k * l1) - np.sinh(k * l1)) * (-k ** 2 * np.cos(k * l1) - k ** 2 * np.cosh(k * l1)))
+
+    B1_fun = lambda k: ((k * np.cos(k * l1) + (np.cos(k * l2) * np.cosh(k * l2) - np.sin(k * l2) * np.sinh(k * l2)) * k * np.cosh(
+        k * l1) + (np.cosh(k * l2) * np.sin(k * l2) - np.cos(k * l2) * np.sinh(k * l2)) * k * np.sinh(k * l1)) * (
+                  np.cos(k * l1) - (np.sin(k * l2) * np.cosh(k * l2) + np.cos(k * l2) * np.sinh(k * l2)) * np.sinh(
+              k * l1) + (np.cosh(k * l2) * np.cos(k * l2) + np.sin(k * l2) * np.sinh(k * l2)) * np.cosh(k * l1)) - (
+                  np.sin(k * l1) + (np.cos(k * l2) * np.cosh(k * l2) - np.sin(k * l2) * np.sinh(k * l2)) * np.sinh(
+              k * l1) + (np.cosh(k * l2) * np.sin(k * l2) - np.cos(k * l2) * np.sinh(k * l2)) * np.cosh(k * l1)) * (
+                  -k * np.sin(k * l1) - (
+                  np.sin(k * l2) * np.cosh(k * l2) + np.cos(k * l2) * np.sinh(k * l2)) * k * np.cosh(k * l1) + (
+                          np.cosh(k * l2) * np.cos(k * l2) + np.sin(k * l2) * np.sinh(k * l2)) * k * np.sinh(
+              k * l1)))
+
+    B2_fun = lambda k: ((-k ** 2 * np.sin(k * l1) + (
+            np.cos(k * l2) * np.cosh(k * l2) - np.sin(k * l2) * np.sinh(k * l2)) * k ** 2 * np.sinh(k * l1) + (
+                   np.cosh(k * l2) * np.sin(k * l2) - np.cos(k * l2) * np.sinh(k * l2)) * k ** 2 * np.cosh(
+        k * l1)) * (np.cos(k * l1) - (np.sin(k * l2) * np.cosh(k * l2) + np.cos(k * l2) * np.sinh(k * l2)) * np.sinh(
+        k * l1) + (np.cosh(k * l2) * np.cos(k * l2) + np.sin(k * l2) * np.sinh(k * l2)) * np.cosh(k * l1)) - (
+                  np.sin(k * l1) + (np.cos(k * l2) * np.cosh(k * l2) - np.sin(k * l2) * np.sinh(k * l2)) * np.sinh(
+              k * l1) + (np.cosh(k * l2) * np.sin(k * l2) - np.cos(k * l2) * np.sinh(k * l2)) * np.cosh(k * l1)) * (
+                  -k ** 2 * np.cos(k * l1) - (
+                  np.sin(k * l2) * np.cosh(k * l2) + np.cos(k * l2) * np.sinh(k * l2)) * k ** 2 * np.sinh(
+              k * l1) + (np.cosh(k * l2) * np.cos(k * l2) + np.sin(k * l2) * np.sinh(k * l2)) * k ** 2 * np.cosh(
+              k * l1)))
+
+    fun2_fun = lambda k: -A1_fun(k) * B2_fun(k) + A2_fun(k) * B1_fun(k)
+    roots2_fsolve = fsolve(fun2_fun, np.array(roots2), xtol=1e-10)
+    print('roots2_fsolve = ' + str(roots2_fsolve))
+
+    check_roots = [fun2_fun(k_i) for k_i in roots2]
+    print('check_roots = ' + str(check_roots))
+    check_roots_fsolve = [fun2_fun(k_i) for k_i in roots2_fsolve]
+    print('check_roots_fsolve = ' + str(check_roots_fsolve))
+
+    # plt.plot(k, fun2)
+    # plt.grid()
+    return roots2_fsolve
+
+
 # Динамика балки с барьером
 def beam_with_VI_vibrations(disp_start, vel_start):
     t_loc_lst = []
@@ -303,7 +428,7 @@ def beam_with_VI_vibrations(disp_start, vel_start):
 
     Q_t = -1
     t_step_id = 0
-    # first_step = True
+    first_step = True
     while ((Q_t < 0) and (not time_is_up)): # or first_step:  # ???????????????????????
         # first_step = False
         t_step = t_step_lst[t_step_id]
@@ -368,19 +493,20 @@ def beam_with_VI_vibrations(disp_start, vel_start):
             t_step_id += 1
         # --------------------------------------------------------------
 
-        if is_first_no_VI:
+        if first_step:
             # print('VI, kin = ')
             # print(kinetic_energy_id_sum)
             # print('VI, pot = ')
             # print(potential_energy_id_sum)
 
-            # with open('./plots/vel_lst_VI.txt', 'w') as cur_file:
-            #     cur_file.write(str(vel_list))
-            # with open('./plots/dis_lst_VI.txt', 'w') as cur_file:
-            #     cur_file.write(str(y_list))
-            pass
+            with open('./plots/vel_lst_VI.txt', 'w') as cur_file:
+                cur_file.write(str(vel_list))
+            with open('./plots/dis_lst_VI.txt', 'w') as cur_file:
+                cur_file.write(str(y_list))
+            # pass
+            print('log pause')
 
-        is_first_no_VI = False
+        first_step = False
 
         # global_en_lst.append(sum(total_energy))
         global_en_lst.append(kinetic_energy_id_sum + potential_energy_id_sum)
@@ -396,20 +522,20 @@ def beam_with_VI_vibrations(disp_start, vel_start):
             graph(y_list, vel_list)
 
     # ----------------------------------------------------
-    # # # последний шаг откатываем, поскольку Q>0 мы не хотим
-    # # # if t_loc > 2e-8:
-    # # y_list = y_list_previous
-    # t_loc -= t_step
-    # t_global -= t_step
-    # t_global_lst.pop()
-    # Q_list_time.pop()
-    # y_barrier_global.pop()
-    # y_end_global.pop()
-    # global_en_lst.pop()
-    # kinetic_energy_id_sum_lst.pop()
-    # potential_energy_id_sum_lst.pop()
-    # t_loc_lst.pop()
-    # # # ----------------------------------------------------
+    # # последний шаг откатываем, поскольку Q>0 мы не хотим
+    # # if t_loc > 2e-8:
+    # y_list = y_list_previous
+    t_loc -= t_step
+    t_global -= t_step
+    t_global_lst.pop()
+    Q_list_time.pop()
+    y_barrier_global.pop()
+    y_end_global.pop()
+    global_en_lst.pop()
+    kinetic_energy_id_sum_lst.pop()
+    potential_energy_id_sum_lst.pop()
+    t_loc_lst.pop()
+    # # ----------------------------------------------------
 
     vel_list = np.zeros(point, dtype=float)
     for id in range(len(roots2)):
@@ -532,7 +658,7 @@ ro = 7850  # плотность
 E = 2e11  # модуль Юнга
 # ------------------------------------------------
 point = 500 + 1  # количество элементов балки
-l1 = 0.1  # местоположение барьера
+l1 = 0.8  # местоположение барьера
 l2 = 1  # длина балки
 dl = l2 / (point - 1)
 point_barrier = round((point - 1) * l1)
