@@ -141,7 +141,24 @@ def plot_fit_an_fem():
     plt.show()
 
 
+def plot_one_graph():
+    path = r'./plots/data_before_time_relaxation_small_step_damp_0_0015/location_0.8/'
+    file_name = 'time_force_last.txt'
+    y_values = read_file(path + file_name)
+    file_name = 'time_lst_last.txt'
+    time_lst = read_file(path + file_name)
+
+    plt.figure(1)
+    plt.plot(time_lst, y_values, 'k')
+    plt.xlabel('Time, sec')
+    plt.ylabel('Energy')
+    plt.grid()
+    plt.show()
+
+
 if __name__ == "__main__":
     # plot_data_on_cut_files()
-    plot_fit_an_fem()
     # plot_data_time_relaxation()
+
+    # plot_fit_an_fem()
+    plot_one_graph()

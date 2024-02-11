@@ -34,6 +34,23 @@ def global_stiffness_matrix_with_GU(global_stiffness):
     return global_stiffness
 
 
+def global_stiffness_matrix_with_GU_barrier(global_stiffness, MaxNode, loc_bar):
+    global_stiffness[0, :] = 0
+    global_stiffness[:, 0] = 0
+    global_stiffness[1, :] = 0
+    global_stiffness[:, 1] = 0
+    global_stiffness[0, 0] = 1
+    global_stiffness[1, 1] = 1
+
+    # С учетом ограничения барьера
+    point_bar = round((MaxNode - 1) * loc_bar) * 2
+    global_stiffness[point_bar, :] = 0
+    global_stiffness[:, point_bar] = 0
+    global_stiffness[point_bar, point_bar] = 1
+
+    return global_stiffness
+
+
 def create_ef_stiffness(global_mass, global_stiffness, al0):
     ef_stiffness = global_stiffness + al0 * global_mass
     return ef_stiffness
@@ -104,7 +121,7 @@ def create_impulse_earthquake_data():  # создаем импульсное п�
     points = 75000
     impulse_period = 1e-3
     time_step = 1e-4
-    ampl_impulse = 100
+    ampl_impulse = 10
     impulse_point = int(impulse_period / time_step)
     x_impulse = np.linspace(0, impulse_period, impulse_point)
     omega_impulse = 2 * np.pi * (1 / (impulse_period * 2))

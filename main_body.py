@@ -21,7 +21,7 @@ def main_body_fun(loc_bar=0.9):
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
     # MaxNode = 20 + 1  # количество узлов
-    MaxNode = 200 + 1  # количество узлов
+    MaxNode = 100 + 1  # количество узлов
     dl = L / (MaxNode - 1)
     dm = dl * ro
     # ---------определяем параметры временного шага----------
@@ -45,14 +45,15 @@ def main_body_fun(loc_bar=0.9):
     # print(global_mass)
 
     global_force = np.zeros((2 * MaxNode, 1))  # создаем размер глобального вектора сил
-    global_force = create_global_force(global_force, f_ampl=1)  # создаем начальный вектор сил
+    global_force = create_global_force(global_force, f_ampl=0)  # создаем начальный вектор сил
 
     eigenvalues, eigenvectors_normalized = create_modal_matrix(global_stiffness, global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
-    print((ro / E / I_inertia * np.array(eigenvalues[:10])) ** (1/4))
+    # print((ro / E / I_inertia * np.array(eigenvalues[:10])) ** (1/4))  # вывод корней аналитического уравнения
 
     # ksi_list = np.array([0.03] * (2 * MaxNode))
     # ksi_list = np.array([0, 0.015, 0.015, 0.015, 0.015, 0] + [0.015] * 36)
-    ksi_list = np.array([0.0] * (2 * MaxNode))
+    # ksi_list = np.array([0.0] * (2 * MaxNode))
+    ksi_list = np.array([0.0] + [0.0015] * (2 * MaxNode - 1))
 
     list_diag_damping_modal = 2 * ksi_list * (eigenvalues ** 0.5)
     global_damping_modal = np.diag(list_diag_damping_modal)
@@ -136,8 +137,8 @@ def main_body_fun(loc_bar=0.9):
     # earthquake_time_step, earthquake_all_data = open_file_earthquake_data()  # записываем шаг акселерограммы и данные землетрясения
     # normal_fr = np.sqrt(2688.5 / 324)  # нормализуем землетрясение в Кобе, сужаем акселлелограмму, что бы несущая частота совпала с первой частотой колебания балки
 
-    # earthquake_time_step, earthquake_all_data, impulse_period = create_impulse_earthquake_data()  # создаем импульсное поле ускорений
-    earthquake_time_step, earthquake_all_data, impulse_period = create_zero_earthquake_data()  # создаем ZERO поле ускорений
+    earthquake_time_step, earthquake_all_data, impulse_period = create_impulse_earthquake_data()  # создаем импульсное поле ускорений
+    # earthquake_time_step, earthquake_all_data, impulse_period = create_zero_earthquake_data()  # создаем ZERO поле ускорений
     normal_fr = 1
 
     earthquake_time_lst = np.linspace(0, (len(earthquake_all_data) - 1) * earthquake_time_step, len(earthquake_all_data))  # нормализированный массив времени для акселерограммы
@@ -171,7 +172,8 @@ def main_body_fun(loc_bar=0.9):
 
     # начинаем цикл по времени
     t = 0
-    t_end = 0.15
+    # t_end = 0.15
+    t_end = 0.55
 
     dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
     # dt_lst = [1e-6] * 3  # лист временных шагов без барьера
@@ -190,7 +192,7 @@ def main_body_fun(loc_bar=0.9):
     check_while = True
 
     try:
-        while (t < t_end):  # and check_while:
+        while (t < t_end) and check_while:
         # while True:
             dt = dt_lst[time_step_id]
             t += dt
@@ -360,18 +362,18 @@ def main_body_fun(loc_bar=0.9):
                 axs[0][1].plot(time_lst, earthquake_en_lst, color='r', linestyle='--', linewidth=1, label='Earthquake')
                 # axs[0][1].legend()
 
-            # # ------ ЕСЛИ ИМПУЛЬСНОЕ ВОЗМУЩЕНИЕ ----------
-            # # ------ Запоминаем начальную энергию сразу после конца возмущения -----
-            # if check_if and (t > impulse_period):
-            #     check_if = False
-            #     en_pulse_0 = full_cur_en
-            # if check_if_2 and (not check_if) and (en_pulse_0 / full_cur_en >= np.exp(1)):
-            #     check_if_2 = False
-            #     print('Relaxation time = ' + str(t))
-            #     print('Algorithm Time = ' + str('%.1f' % ((timer() - timer_start) / 60)) + ' min')
-            #     check_while = False
-            #
-            # # --------------------------------------------------------
+            # ------ ЕСЛИ ИМПУЛЬСНОЕ ВОЗМУЩЕНИЕ ----------
+            # ------ Запоминаем начальную энергию сразу после конца возмущения -----
+            if check_if and (t > impulse_period):
+                check_if = False
+                en_pulse_0 = full_cur_en
+            if check_if_2 and (not check_if) and (en_pulse_0 / full_cur_en >= np.exp(1)):
+                check_if_2 = False
+                print('Relaxation time = ' + str(t))
+                print('Algorithm Time = ' + str('%.1f' % ((timer() - timer_start) / 60)) + ' min')
+                check_while = False
+
+            # --------------------------------------------------------
 
             # ------заполняем массив амплитудами перемещений рассматриваемых мод------------
             modal_dis_i = np.matmul(np.linalg.inv(eigenvectors_normalized), dis_i)
@@ -386,10 +388,12 @@ def main_body_fun(loc_bar=0.9):
             full_en_mode = 1 / 2 * np.array(modal_vel_i_transp) ** 2 + 1 / 2 * eigenvalues * np.array(modal_dis_i_transp) ** 2
 
 
-            energy_values = [full_en_mode[i] for i in [1, 2, 3, 4, 6, 7, 8, 9]]
+            # energy_values = [full_en_mode[i] for i in [1, 2, 3, 4, 6, 7, 8, 9]]
+            energy_values = [full_en_mode[i] for i in [1, 2, 3, 4, 5, 6, 7, 8, 9]]  # 101 nodes
             if np.sum(energy_values) != 0:
             # if True:
-                omega_first = np.array([(eigenvalues[i]) ** 0.5 for i in [1, 2, 3, 4, 6, 7, 8, 9]])
+            #     omega_first = np.array([(eigenvalues[i]) ** 0.5 for i in [1, 2, 3, 4, 6, 7, 8, 9]])
+                omega_first = np.array([(eigenvalues[i]) ** 0.5 for i in [1, 2, 3, 4, 5, 6, 7, 8, 9]])  # 101 nodes
                 energy_density = np.array([(en_cur / np.sum(energy_values)) for en_cur in energy_values])
                 en_func_cur = -np.sum(energy_density * np.log(energy_density))  # энтропия
                 en_func_cur_2 = np.sum(energy_density * omega_first)  # придуманный функционал
@@ -404,11 +408,14 @@ def main_body_fun(loc_bar=0.9):
                 df = pd.DataFrame(full_en_mode, columns=['origin'], index=range(1, len(modal_vel_i_transp) + 1))
                 axs[1][1].set_title('Energy distribution over modes\nMax energy = {} %'.format(round(max(df.origin[:number_mode_plot]) / sum(df.origin[:number_mode_plot]) * 100)), fontsize=7, pad=0)
                 # axs[1][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot])
-                axs[1][1].bar(np.arange(1, number_mode_plot - 1), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 6, 7, 8, 9]])
+
+                # axs[1][1].bar(np.arange(1, number_mode_plot - 1), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 6, 7, 8, 9]])
+                axs[1][1].bar(np.arange(1, number_mode_plot), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 5, 6, 7, 8, 9]])  # 101 nodes
+
                 # axs[1][1].axis([0, df.index[number_mode_plot], 0, 1e-3])
                 # axs[1][1].axis([0, df.index[number_mode_plot] - 2, 0, 1e-3])
                 # axs[1][1].set_xticks(np.arange(1, number_mode_plot + 1))
-                axs[1][1].set_xticks(np.arange(1, number_mode_plot - 1))
+                axs[1][1].set_xticks(np.arange(1, number_mode_plot))
 
                 # вместо графика логарифма энергии будем строить график функционала распределения энергии
                 # axs[2][1].set_title('Log distribution of energy over modes', fontsize=10)
@@ -532,9 +539,10 @@ if __name__ == '__main__':
     #     f.write('Close to the barrier 1e-8\nFar from the berrier 2e-6\nForce 1\nkc = 1\ndelta = 0')
     main_body_fun(loc_bar=loc_bar)
 
-    # loc_bar_list = np.arange(0.9, 0.4, -0.1)
+    # loc_bar_list = np.arange(0.99, 0.4, -0.01)
     # for loc_bar in loc_bar_list:
-    #     path = './plots/data_before_time_relaxation/impuls_loading/impulse_period_1e_2/damp_0.0015/location_{}/'.format(round(loc_bar, 1))
+    #     # path = './plots/data_before_time_relaxation/impuls_loading/impulse_period_1e_2/damp_0.0015/location_{}/'.format(round(loc_bar, 1))
+    #     path = './plots/data_before_time_relaxation_small_step_damp_0_0015/location_{}/'.format(round(loc_bar, 2))
     #     os.mkdir(path)
     #
     #     main_body_fun(loc_bar=loc_bar)

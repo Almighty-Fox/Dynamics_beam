@@ -11,8 +11,8 @@ from scipy.optimize import fsolve
 
 # определяем частоты, формы и коэф (D = form ** 2) для балки без барьера
 def beam_without_barrier():
-    al_l = np.arange(0, 12, 0.00001)
-    # al_l = np.arange(0, 12, 0.00001)
+    # al_l = np.arange(0, 21, 0.00001)
+    al_l = np.arange(0, 16, 0.00001)
     fun1 = np.sinh(al_l) * np.cos(al_l) + 1
     roots1 = []
     omega1 = []
@@ -24,6 +24,7 @@ def beam_without_barrier():
 
     print('no VI om2 = ', str(E * J_inertia / ro / S * np.array(roots1) ** 4))
     print('original roots1 = ' + str(roots1))
+
     # -------------------------------------------------------------------------------------
     # # берем корни из Ансиса
     # roots1 = (ro * S / E / J_inertia) ** (1 / 4) * (
@@ -244,12 +245,13 @@ def beam_with_barrier():
         omega2.append(np.sqrt(E * J_inertia / ro / S) * (roots2_i ** 2))
     # -------------------------------------------------------------------------------------
 
-    # -------------------------------------------------------------------------------------
+    # # -------------------------------------------------------------------------------------
     # # берем корни из Ансиса
     # roots2 = (ro * S / E / J_inertia) ** (1 / 4) * (
     #             np.array([50.821, 121.27, 219.32, 409.51, 668.86, 952.95, 1132.0, 1461.1]) * 2 * np.pi) ** (1 / 2)
     # print(roots2)
-    roots2 = [4.68258595, 7.23594079, 9.73637153, 13.31419042, 17.03171237, 20.34929044, 22.21264742, 25.26255485]
+
+    roots2 = [4.68258595, 7.23594079, 9.73637153, 13.31419042, 17.03171237] #, 20.34929044] #, 22.21264742] #, 25.26255485]
     omega2 = []
     for roots2_i in roots2:
         omega2.append(np.sqrt(E * J_inertia / ro / S) * (roots2_i ** 2))
@@ -303,6 +305,7 @@ def beam_with_barrier():
 
     print('D2=')
     print(D2)
+    print('\n')
 
     return roots2, D2, forms2, omega2, Q_lst, form_barrier_second_dif_lst
 
