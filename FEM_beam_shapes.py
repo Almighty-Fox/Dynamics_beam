@@ -13,7 +13,7 @@ def main_body_fun(loc_bar=0.8):
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
     # MaxNode = 20 + 1  # количество узлов
-    MaxNode = 500 + 1  # количество узлов
+    MaxNode = 1000 + 1  # количество узлов
     dl = L / (MaxNode - 1)
     dm = dl * ro
     # ------------------------------------------------------------
@@ -23,8 +23,8 @@ def main_body_fun(loc_bar=0.8):
 
     # формируем матрицы для дифура
     global_stiffness = build_global_stiffness_matrix(elements, MaxNode)  # собираем глобальную МЖ (матрица жесткости)
-    global_stiffness = global_stiffness_matrix_with_GU_barrier(global_stiffness, MaxNode,
-                                                               loc_bar)  # вносим ГУ в МЖ с учетом барьера
+    # global_stiffness = global_stiffness_matrix_with_GU_barrier(global_stiffness, MaxNode, loc_bar)  # вносим ГУ в МЖ с учетом барьера
+    global_stiffness = global_stiffness_matrix_with_GU(global_stiffness)  # вносим ГУ в МЖ
     # print(global_stiffness)
 
     global_mass = build_global_mass_matrix(elements, MaxNode)  # собирает глобальную ММ (матрица масс)
@@ -34,42 +34,73 @@ def main_body_fun(loc_bar=0.8):
                                                                global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
     # print((ro / E / I_inertia * np.array(eigenvalues[:10])) ** (1/4))  # вывод корней аналитического уравнения
 
-    roots2 = (ro / E / I_inertia * np.array(eigenvalues[:10])) ** (1 / 4)
-
-    # maxN = 7
-    print('First roots')
-    print(roots2[:maxN])
+    roots2 = (ro / E / I_inertia * np.array(eigenvalues)) ** (1 / 4)
 
     eigenvectors_normalized_tr = np.transpose(eigenvectors_normalized)
     natural_shapes = [eigenvectors_normalized_tr[i][::2] for i in range(len(eigenvectors_normalized_tr))]
 
-    # i = 3
-    # plt.plot(np.linspace(0, 1, MaxNode), natural_shapes[i])
+    # фильтруем собственные формы, убираем шумовые
+    noise_lst = []
+    threshold = max(abs(natural_shapes[5]))
+    for i in range(len(natural_shapes)):
+        if max(abs(natural_shapes[i])) > 2 * threshold:  # критерий шума
+            noise_lst.append(i)
+
+    natural_shapes_pure = [natural_shapes[i] for i in range(len(natural_shapes)) if i not in noise_lst]
+    roots2_pure = [roots2[i] for i in range(len(roots2)) if i not in noise_lst]
+
+    print('First roots')
+    print(roots2_pure[:maxN])
+
+    # ----------------------------------------
 
     plt.figure()
     plt.grid()
     cnt = 0
-    for i in range(shiftN, maxN + shiftN):
+    # for i in range(shiftN, maxN + shiftN):
+    for i in range(maxN):
         cnt += 1
-        plt.plot(np.linspace(0, 1, MaxNode), natural_shapes[i], label=f'fr={cnt}')
+        plt.plot(np.linspace(0, 1, MaxNode), natural_shapes_pure[i], label=f'fr={cnt}')
 
-    return roots2, natural_shapes
+    return roots2_pure[:maxN], natural_shapes_pure[:maxN]
 
 
 def saving_beam_shapes(roots2, natural_shapes):
-    with open('./plots/saving_beam_shapes.txt', 'w') as cur_file:
+    with open('./plots/saving_beam_shapes_noVI.txt', 'w') as cur_file:
         # cur_file.write(', '.join(map(str, roots2[shiftN:maxN + shiftN])))
 
-        cur_file.write(str(list(roots2[shiftN:maxN + shiftN])) + '\n')
-        cur_file.write(str(list(map(list, natural_shapes[shiftN:maxN + shiftN]))))
+        # cur_file.write(str(list(roots2[shiftN:maxN + shiftN])) + '\n')
+        # cur_file.write(str(list(map(list, natural_shapes[shiftN:maxN + shiftN]))))
+
+        cur_file.write(str(list(roots2)) + '\n')
+        cur_file.write(str(list(map(list, natural_shapes))))
+
+
+def reading_beam_shapes(path):
+    with open(path, 'r') as cur_file:
+        data = cur_file.readlines()
+
+    roots = eval(data[0])
+    natural_shapes = eval(data[1])
+
+    print('Chech reading fuction')
+    # print(roots)
+    # print(natural_shapes)
+    print(f'len(roots) = {len(roots)}')
+
+    return roots, natural_shapes
 
 
 if __name__ == '__main__':
-    maxN = 7  # количество рассматриваемых первых мод
-    shiftN = 2  # количество шумовых мод, стоящих вначале
+    maxN = 20  # количество рассматриваемых первых мод
+    # shiftN = 0  # количество шумовых мод, стоящих вначале
 
     [roots2, natural_shapes] = main_body_fun(loc_bar=0.8)  # находим собственные частоты и собственные формы балки с барьером
     saving_beam_shapes(roots2, natural_shapes)  # сохраняем собственные частоты и собственные формы балки с барьером
+
+    # Проверяем записанные в файл частоты и формы
+    # path = r'./plots/saving_beam_shapes_noVI.txt'
+    # reading_beam_shapes(path)
 
     plt.legend()
     plt.show()
