@@ -3,7 +3,7 @@ from create_global_matrix import *
 from chart_script import *
 
 
-def main_body_fun(loc_bar=0.8):
+def main_body_fun(VI_flag, loc_bar=0.8):
     # ---------определяем параметры материала образца----------
     a = 10e-3  # сторона квадратного сечения
     S = a * a  # площадь сечения балки
@@ -23,8 +23,10 @@ def main_body_fun(loc_bar=0.8):
 
     # формируем матрицы для дифура
     global_stiffness = build_global_stiffness_matrix(elements, MaxNode)  # собираем глобальную МЖ (матрица жесткости)
-    # global_stiffness = global_stiffness_matrix_with_GU_barrier(global_stiffness, MaxNode, loc_bar)  # вносим ГУ в МЖ с учетом барьера
-    global_stiffness = global_stiffness_matrix_with_GU(global_stiffness)  # вносим ГУ в МЖ
+    if VI_flag:
+        global_stiffness = global_stiffness_matrix_with_GU_barrier(global_stiffness, MaxNode, loc_bar)  # вносим ГУ в МЖ с учетом барьера
+    else:
+        global_stiffness = global_stiffness_matrix_with_GU(global_stiffness)  # вносим ГУ в МЖ
     # print(global_stiffness)
 
     global_mass = build_global_mass_matrix(elements, MaxNode)  # собирает глобальную ММ (матрица масс)
@@ -41,7 +43,7 @@ def main_body_fun(loc_bar=0.8):
 
     # фильтруем собственные формы, убираем шумовые
     noise_lst = []
-    threshold = max(abs(natural_shapes[5]))
+    threshold = min(max(abs(natural_shapes[5])), max(abs(natural_shapes[6])), max(abs(natural_shapes[7])))
     for i in range(len(natural_shapes)):
         if max(abs(natural_shapes[i])) > 2 * threshold:  # критерий шума
             noise_lst.append(i)
@@ -56,6 +58,7 @@ def main_body_fun(loc_bar=0.8):
 
     plt.figure()
     plt.grid()
+    plt.title(f'{maxN} natural frequencies')
     cnt = 0
     # for i in range(shiftN, maxN + shiftN):
     for i in range(maxN):
@@ -65,8 +68,13 @@ def main_body_fun(loc_bar=0.8):
     return roots2_pure[:maxN], natural_shapes_pure[:maxN]
 
 
-def saving_beam_shapes(roots2, natural_shapes):
-    with open('./plots/saving_beam_shapes_noVI.txt', 'w') as cur_file:
+def saving_beam_shapes(roots2, natural_shapes, VI_flag):
+    if VI_flag:
+        path = './plots/saving_beam_shapes.txt'
+    else:
+        path = './plots/saving_beam_shapes_noVI.txt'
+
+    with open(path, 'w') as cur_file:
         # cur_file.write(', '.join(map(str, roots2[shiftN:maxN + shiftN])))
 
         # cur_file.write(str(list(roots2[shiftN:maxN + shiftN])) + '\n')
@@ -95,8 +103,9 @@ if __name__ == '__main__':
     maxN = 20  # количество рассматриваемых первых мод
     # shiftN = 0  # количество шумовых мод, стоящих вначале
 
-    [roots2, natural_shapes] = main_body_fun(loc_bar=0.8)  # находим собственные частоты и собственные формы балки с барьером
-    saving_beam_shapes(roots2, natural_shapes)  # сохраняем собственные частоты и собственные формы балки с барьером
+    VI_flag = True
+    [roots2, natural_shapes] = main_body_fun(VI_flag, loc_bar=0.8)  # находим собственные частоты и собственные формы балки с барьером
+    saving_beam_shapes(roots2, natural_shapes, VI_flag)  # сохраняем собственные частоты и собственные формы балки с барьером
 
     # Проверяем записанные в файл частоты и формы
     # path = r'./plots/saving_beam_shapes_noVI.txt'

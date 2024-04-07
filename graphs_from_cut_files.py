@@ -142,16 +142,25 @@ def plot_fit_an_fem():
 
 
 def plot_one_graph():
-    path = r'./plots/data_before_time_relaxation_small_step_damp_0_0015/location_0.8/'
-    file_name = 'time_force_last.txt'
+    path = r'./plots/data_before_time_relaxation_small_step/location_0.41/'
+    file_name = 'time_disp_end_1.txt'
     y_values = read_file(path + file_name)
-    file_name = 'time_lst_last.txt'
+
+    file_name = 'time_disp_1.txt'
+    y_values_2 = read_file(path + file_name)
+
+    file_name = 'time_lst_1.txt'
     time_lst = read_file(path + file_name)
 
     plt.figure(1)
-    plt.plot(time_lst, y_values, 'k')
-    plt.xlabel('Time, sec')
-    plt.ylabel('Energy')
+    plt.plot(time_lst, np.array(y_values) * 1000, 'k', label='Beam end coordinate')
+    plt.plot(time_lst, np.array(y_values_2) * 1000, 'g', label='Point opposite the barrier')
+    plt.plot([0, max(time_lst)], [0, 0], 'r--', label='Barrier location')
+    plt.xlabel('Time, sec', fontsize=12)
+    # plt.ylabel('Displacement, mm', fontsize=12)
+    plt.ylabel('Displacement, mm', fontsize=12)
+    # plt.title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.')
+    plt.legend()
     plt.grid()
     plt.show()
 

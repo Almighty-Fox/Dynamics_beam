@@ -5,6 +5,52 @@ from class_beam_elements import Class_beam_elements
 from create_global_matrix import *
 
 
+def shape_interpolation(roots, natural_shapes):
+    shape_interpolation_lst = []
+    x_lst = np.linspace(0, l2, point)
+    for i in range(len(roots)):
+        k = roots[i]
+        natural_shape = natural_shapes[i]
+
+        i_0 = [0, round(len(natural_shape) / 3), round(len(natural_shape) * 2 / 3), -1]
+        [x1, x2, x3, x4] = [x_lst[i_0[0]], x_lst[i_0[1]], x_lst[i_0[2]], x_lst[i_0[3]]]
+        [y1, y2, y3, y4] = [natural_shape[i_0[0]], natural_shape[i_0[1]], natural_shape[i_0[2]], natural_shape[i_0[3]]]
+
+        sin_cos_tensor = np.array([[np.sin(k * x1), np.cos(k * x1), np.sinh(k * x1), np.cosh(k * x1)],
+                          [np.sin(k * x2), np.cos(k * x2), np.sinh(k * x2), np.cosh(k * x2)],
+                          [np.sin(k * x3), np.cos(k * x3), np.sinh(k * x3), np.cosh(k * x3)],
+                          [np.sin(k * x4), np.cos(k * x4), np.sinh(k * x4), np.cosh(k * x4)]])
+
+        y_tensor = np.array([[y1], [y2], [y3], [y4]])
+
+        A_tensor = np.matmul(np.linalg.inv(sin_cos_tensor), y_tensor)
+        print(A_tensor)
+
+        shape_interpolation_i = lambda x, kk=k: A_tensor[0][0] * np.sin(kk * x) + A_tensor[1][0] * np.cos(kk * x) + A_tensor[2][0] * np.sinh(kk * x) + A_tensor[3][0] * np.cosh(kk * x)
+        shape_interpolation_lst.append(shape_interpolation_i)
+
+
+    # plt.figure()
+    print(roots)
+    print(f'k = {roots[0]}')
+    print(shape_interpolation_lst)
+    print(shape_interpolation_lst[0])
+    print(len(shape_interpolation_lst))
+    print()
+    for i in range(len(roots)):
+        plt.figure()
+        plt.plot(x_lst, [shape_interpolation_lst[i](x) for x in x_lst])
+        # plt.plot(x_lst, natural_shapes[i])
+
+    # plt.plot(x_lst, [shape_interpolation[6](x) for x in x_lst])
+    # plt.plot(x_lst, shape_interpolation[0])
+    # plt.plot([0, 1], [(shape_interpolation[0](x)) for x in [0, 1]])
+    plt.show()
+
+    return shape_interpolation_lst
+
+
+
 # определяем частоты, формы и коэф (D = form ** 2) для балки без барьера
 def beam_without_barrier():
     # -------------------------------------------------------------------------------------
@@ -13,7 +59,14 @@ def beam_without_barrier():
     omega1 = []
     for roots1_i in roots1:
         omega1.append(np.sqrt(E * J_inertia / ro / S) * (roots1_i ** 2))
+    print(f'Рассматриваем частот {len(roots1)} без ВИ')
+    print(f'Максимальная частота без ВИ = {roots1[-1]}')
     # -------------------------------------------------------------------------------------
+
+    # попытка из полученных численно форм вывести аналитическое уравнение, к которому применимы аналитические методы
+    # сложность, что значения аргументов в гиперболических функциях остаются большими при высоких частотах, что ведет к неправильному виду полученной формы
+    # shape_interpolation(roots1, natural_shapes1)
+
 
     print('Freq no VI = ' + str(roots1))
     D1 = []
@@ -200,6 +253,8 @@ def beam_with_barrier():
     omega2 = []
     for roots2_i in roots2:
         omega2.append(np.sqrt(E * J_inertia / ro / S) * (roots2_i ** 2))
+    print(f'Рассматриваем частот {len(roots2)} ВИ')
+    print(f'Максимальная частота ВИ = {roots2[-1]}')
     # -------------------------------------------------------------------------------------
 
     D2 = []
