@@ -82,21 +82,21 @@ def iterative_solution_search():
 
     q = 0  # целое число, номер шага по времени
     out_time = 0  # внешнее время
-    tau = 1e-6  # шаг по времени
+    tau = 1e-8  # шаг по времени
     in_time = 0  # время между дискретными временными шагами
     out_time = q * tau + in_time
 
-    in_time_Nstep = 100
+    in_time_Nstep = 1
     in_time_step = tau / in_time_Nstep
 
-    while Pq > 0:
+    while (Pq > 0) or True:
         print(Pq)
         q += 1
         print('q = {}'.format(q))
         in_time = 0
         for i in range(in_time_Nstep):
             in_time += in_time_step
-            out_time = q * tau + in_time
+            out_time = (q-1) * tau + in_time
             summ1, summ2 = 0, 0
             t_cur += t_step
             for ii in range(len(omegas1)):
@@ -132,6 +132,7 @@ def iterative_solution_search():
                 slag2 = (Pq - Pq_prev) / tau * (1/ak[ii] * (q*out_time*np.cos(ak[ii]*out_time*(1-q)) - (q-1)*out_time*np.cos(ak[ii]*out_time*(2-q))) + 1/ak[ii]**2 * (np.sin(ak[ii]*out_time*(1-q)) - np.sin(ak[ii]*out_time*(2-q))))
 
                 Iq.append(Iq_prev[ii] + (Pq * (1 - q) - Pq_prev * q) * l_length**2 / rk_lst[ii]**2 / delta * slag1 + slag2)
+                print('Iq = {}'.format(Iq[-1]))
 
             # change next ans prev values
             Iq_prev = Iq.copy()
