@@ -71,9 +71,26 @@ def main_body_fun(loc_bar=0.9):
     print(np.concatenate(start_def).ravel().tolist())
 
     # Начало метода Ньюмарка
-    # dis_i = np.zeros((2 * MaxNode, 1))  # начальный вектор координат
-    dis_i = start_def.copy()  # начальный вектор координат
-    vel_i = np.zeros((2 * MaxNode, 1))  # начальный вектор скоростей
+    dis_i = np.zeros((2 * MaxNode, 1))  # начальный вектор координат
+    # dis_i = start_def.copy()  # начальный вектор координат
+
+    # vel_i = np.zeros((2 * MaxNode, 1))  # начальный вектор скоростей
+    with open(r'./plots/initial_vel_compare.txt', 'r') as cur_file:
+        body_file = cur_file.readlines()
+        body_file_clean = []
+        for line in body_file:
+            body_file_clean += (line.replace('\n', ' ').replace('[', '').replace(']', '').split())
+
+        body_file_clean_array = np.array(body_file_clean, dtype=float)
+
+    vel_i = np.zeros((2 * MaxNode, 1))
+    for i in range(MaxNode):
+        vel_i[i*2, 0] = body_file_clean_array[i]
+
+    # print(vel_i)
+    # print(len(vel_i))
+
+    # vel_i = np.zeros((2 * MaxNode, 1))
     # modal_vel_i = np.zeros((2 * MaxNode, 1))  # начальный вектор модальных скоростей
 
     # считаем начальный вектор ускорений
@@ -137,8 +154,8 @@ def main_body_fun(loc_bar=0.9):
     # earthquake_time_step, earthquake_all_data = open_file_earthquake_data()  # записываем шаг акселерограммы и данные землетрясения
     # normal_fr = np.sqrt(2688.5 / 324)  # нормализуем землетрясение в Кобе, сужаем акселлелограмму, что бы несущая частота совпала с первой частотой колебания балки
 
-    earthquake_time_step, earthquake_all_data, impulse_period = create_impulse_earthquake_data()  # создаем импульсное поле ускорений
-    # earthquake_time_step, earthquake_all_data, impulse_period = create_zero_earthquake_data()  # создаем ZERO поле ускорений
+    # earthquake_time_step, earthquake_all_data, impulse_period = create_impulse_earthquake_data()  # создаем импульсное поле ускорений
+    earthquake_time_step, earthquake_all_data, impulse_period = create_zero_earthquake_data()  # создаем ZERO поле ускорений
     normal_fr = 1
 
     earthquake_time_lst = np.linspace(0, (len(earthquake_all_data) - 1) * earthquake_time_step, len(earthquake_all_data))  # нормализированный массив времени для акселерограммы

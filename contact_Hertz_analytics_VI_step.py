@@ -51,6 +51,14 @@ def beam_without_barrier():
 def initial_conditions():
     disp_start = np.zeros(points)
     vel_start = -omegas1[0] * forms1[0] / 100000
+
+    # plt.plot(np.linspace(0, 1, points), vel_start)
+    # plt.show()
+    # with open(r'./plots/initial_vel_compare.txt', 'w') as cur_file:
+    #     cur_file.write(str(vel_start))
+
+    # print('Wriring success')
+
     # vel_start = omegas1[0] * forms1[0] * 0
 
     return disp_start, vel_start
@@ -86,6 +94,9 @@ def dynamic_beam_recalc_integ():
     slag2_koef_norm = 1
     slag2 = slag2_koef_norm * slag_koef * sum([1 / rk_lst[ii]**2 / omegas1[ii] * forms1_barrier[ii]**2 / D1[ii]**2 * (1 - np.cos(omegas1[ii]*tau)) for ii in range(len(omegas1))])
 
+    axs[0].plot([], [])
+    plt.pause(8)
+
     Pq_lst = []
 
     while len(Pq_lst) < 2000:
@@ -113,9 +124,13 @@ def dynamic_beam_recalc_integ():
         print(f'slag_free = {slag_free}')
         print(f'slag1 = {slag1}')
         print(f'slag2 = {slag2}')
+        print(f'Pq = {Pq_new}')
 
+        fig.suptitle('Time = ' + str('%.4g' % t_lst[-1]))
         Pq_lst.append(Pq_new * slag2_koef_norm)
-        axs[0].plot(t_lst[:-1], Pq_lst, 'b', linewidth=1, marker='')
+        axs[0].set_title('Force VI')
+        axs[0].plot(t_lst[:-1], Pq_lst, 'b', linewidth=1, marker='.')
+        axs[0].plot([0, t_lst[-1]], [0, 0], 'k', linewidth=0.5)
 
         slag_free_shape = np.zeros(points)
         for k in range(len(omegas1)):
@@ -131,6 +146,7 @@ def dynamic_beam_recalc_integ():
 
         u_new = slag_free_shape + slag_VI_shape
         # u_new = slag_VI_shape
+        axs[1].set_title('Beam shape')
         axs[1].plot(np.linspace(0, l_length, points), u_new, 'b', linewidth=1, marker='')
         axs[1].plot([0, 1], [0, 0], 'r', linewidth=1, marker='')
         axs[1].plot([l_barrier], [0], 'r', linewidth=1, marker='.')
@@ -154,7 +170,7 @@ section_side = 10e-3
 J_inertia = section_side ** 4 / 12
 ro_density = 7850
 l_length = 1
-l_barrier = 0.8
+l_barrier = 0.6
 F_section = section_side ** 2
 
 points = 100 + 1
