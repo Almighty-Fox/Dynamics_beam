@@ -28,16 +28,37 @@ def main_body_fun(loc_bar=0.9):
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
     # MaxNode = 20 + 1  # количество узлов
-    MaxNode = 500 + 1  # количество узлов
-    dl = L / (MaxNode - 1)
-    dm = dl * ro
+    MaxNode = 190 + 1  # количество узлов
+    # MaxNode = 290 + 1  # количество узлов
+    # dl = L / (MaxNode - 1)
+    # dm = dl * ro
     # ---------определяем параметры метода Ньюмарка----------
     gamma = 0.5
     beta = 0.5
     # -------------------------------------------------------
+    full_en_lst = [0]  # массив полной энергии стержня, кин + потен
 
-    elements = [Class_string_elements(i, L, MaxNode, E, S, ro) for i in
+    # ------------------------------ параметры барьера ----------------------------------
+    # loc_bar = 0.9  # местоположение барьера вдоль оси балки (от 0 до 1)
+    # point_bar = round((MaxNode - 1) * loc_bar)  # номер эелемента в глобальном векторе сил, на который действует сила VI
+    point_bar = round((MaxNode - 1) / 2)  # номер эелемента в глобальном векторе сил, на который действует сила VI
+    # ---------------------------
+
+    elements = [Class_string_elements(i, L, MaxNode, E, S, ro, point_bar) for i in
                 range(MaxNode - 1)]  # создаем массив балочных элементов
+
+    print(sum([elements[i].dl for i in range(MaxNode - 1)]))
+
+    nodes_coor = []
+    cur_coor = 0
+    for i in range(MaxNode - 1):
+        nodes_coor.append(cur_coor)
+        cur_coor += elements[i].dl
+        print(cur_coor)
+    nodes_coor.append(L)
+    nodes_coor = np.array(nodes_coor)
+
+    print(nodes_coor)
 
     # формируем матрицы для дифура
     global_stiffness = build_global_stiffness_matrix(elements, MaxNode)  # собираем глобальную МЖ (матрица жесткости)
@@ -68,7 +89,10 @@ def main_body_fun(loc_bar=0.9):
     # dis_i = start_def.copy()  # начальный вектор координат
 
     # vel_i = np.zeros((MaxNode, 1))  # начальный вектор скоростей
-    vel_i = -1e0 * np.sin(np.pi * np.linspace(0, 1, MaxNode))
+    # vel_i = -1e0 * np.sin(np.pi * np.linspace(0, 1, MaxNode))
+    # vel_i = vel_i.reshape(-1, 1)
+
+    vel_i = -np.sin(np.pi * nodes_coor / L)
     vel_i = vel_i.reshape(-1, 1)
 
     # считаем начальный вектор ускорений
@@ -78,17 +102,14 @@ def main_body_fun(loc_bar=0.9):
     # plt.plot(np.linspace(0, L, MaxNode), np.matmul(global_damping, vel_i))
     # plt.show()
 
-    # ------------------------------ параметры барьера ----------------------------------
-    # loc_bar = 0.9  # местоположение барьера вдоль оси балки (от 0 до 1)
-    point_bar = round((MaxNode - 1) * loc_bar)  # номер эелемента в глобальном векторе сил, на который действует сила VI
-    # ---------------------------
+
 
     time_disp = [dis_i[point_bar, 0]]  # запоминаем з-ть коодинаты середины балки
     time_disp_end = [dis_i[-1, 0]]  # запоминаем з-ть коодинаты конца балки
     time_force = [global_force[point_bar, 0]]  # запоминаем з-ть VI силы
     time_lst = [0]  # массив времени
 
-    step_plot = 700  # каждый 200ый шаг выводим графики
+    step_plot = 100  # каждый 200ый шаг выводим графики
     number_mode_plot = 10  # количество мод, которое выводим на графиках
     en_func = []  # лист функционала энергии
     en_func_2 = []  # лист второго функционала энергии
@@ -101,14 +122,14 @@ def main_body_fun(loc_bar=0.9):
     axs[0][0].set_title('Beam shape')
     axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=10)
     axs[2][0].set_title('VI force')
-    axs[0][0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i, 0] for i in range(MaxNode)], 'r', linewidth=1)
+    axs[0][0].plot(nodes_coor, [dis_i[i, 0] for i in range(MaxNode)], 'r', linewidth=1)
     scale = start_def[-1][0]  # Масштаб графика формы балки
     # axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
     axs[1][0].plot(time_lst, time_disp, 'g', linewidth=1)
     axs[1][0].plot(time_lst, time_disp_end, 'k', linewidth=1)
     axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)
 
-    axs[0][1].plot(np.linspace(0, L, num=MaxNode), [vel_i[i, 0] for i in range(MaxNode)], 'r', linewidth=1)
+    axs[0][1].plot(nodes_coor, [vel_i[i, 0] for i in range(MaxNode)], 'r', linewidth=1)
 
     plt.pause(2)
     axs[0][0].clear()
@@ -119,7 +140,7 @@ def main_body_fun(loc_bar=0.9):
 
     # ------- для вычисления силы VI ----------------------
     R_barrier = 10e-3
-    k_c = 1e6 * 2 * E * (R_barrier ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
+    k_c = 1e5 * 2 * E * (R_barrier ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
     print('k_c = {}'.format(k_c))
     # -------------------------------------------------------------------------------------
     global_force = create_global_force(global_force, f_ampl=0)  # обнуляем силу на конце балки
@@ -131,7 +152,7 @@ def main_body_fun(loc_bar=0.9):
     t_end = 55
 
     # dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
-    dt_lst = [1e-6] * 3  # лист временных шагов без барьера
+    dt_lst = [1e-5] * 3  # лист временных шагов без барьера
     # Начинаем с самого большого шага. Если этим большим шагом зашли вовнутрь барьера, то откываемся на шаг цикла назад и меняем временной шаг на следующий в листе.
     # Так делаем до тех пор, пока шаг не станет самым маленьким из списка. Потом считаем на этом шаге, но как только балка выйдет из барьера, каждый
     # следующий шаг делаем на один больше из списка.
@@ -197,6 +218,7 @@ def main_body_fun(loc_bar=0.9):
             time_lst.append(t)
             time_en_func.append(t)  # переместили сюда, что бы строить графики напряжений, которые шли до этой команды
 
+
             if (len(time_lst) % step_plot == 0):  # or (round(t, 8) == 0.14201218):
                 is_plot = True
             else:
@@ -210,11 +232,12 @@ def main_body_fun(loc_bar=0.9):
                 #              + ' s = ' + str('%.2f' % (t * 1e3)) + ' ms = ' + str('%.2f' % (t * 1e6)) + ' µs')
                 fig.suptitle('Real Time = ' + str('%.2f' % t)
                              + 's = ' + str('%.2f' % (t * 1e3)) + 'ms' + '  (Algorithm Time = ' + str('%.1f' % ((timer() - timer_start) / 60)) + ' min)')
-                axs[0][0].plot(np.linspace(0, L, num=MaxNode), [dis_i[i, 0] for i in range(MaxNode)], 'r',
+                axs[0][0].plot(nodes_coor, [dis_i[i, 0] for i in range(MaxNode)], 'r',
                             linewidth=1)  # Положение балки
-                axs[0][0].plot([L * (point_bar) / (MaxNode - 1)], [dis_i1[point_bar, 0]], 'go', markersize=4)  # Жирная точка середина балки
+                # axs[0][0].plot([L * (point_bar) / (MaxNode - 1)], [dis_i1[point_bar, 0]], 'go', markersize=4)  # Жирная точка середина балки
                 axs[0][0].plot([L], [dis_i1[-1, 0]], 'ko', markersize=4)  # Жирная точка конца балки
-                axs[0][0].plot([L * point_bar / (MaxNode - 1)], [0], 'b^', markersize=7)  # Местоположение барьера
+                # axs[0][0].plot([L * point_bar / (MaxNode - 1)], [0], 'b^', markersize=7)  # Местоположение барьера
+                axs[0][0].plot([L / 2], [0], 'b^', markersize=7)  # Местоположение барьера
                 # scale = max(abs(min(time_disp_end)), abs(max(time_disp_end)), delta * 2)  # Масштаб графика формы балки
                 scale = start_def[-1][0]  # Масштаб графика формы балки
                 # axs[0][0].axis([0, L * 1.1, -scale * 1.2, scale * 1.2])  # устанавливаем диапозон осей
@@ -223,6 +246,18 @@ def main_body_fun(loc_bar=0.9):
                 axs[1][0].plot(time_lst, time_disp_end, color='k', linewidth=1)  # временная з-ть конца балки
 
                 axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)  # временная з-ть силы VI
+
+            # ----------------- ENERGY -------------------
+            dis_i_transp = [disp for sublist in dis_i for disp in sublist]
+            vel_i_transp = [vel for sublist in vel_i for vel in sublist]
+            full_cur_en = 1 / 2 * np.dot(vel_i_transp, np.dot(global_mass, vel_i))[0] + 1 / 2 * \
+                          np.dot(dis_i_transp, np.dot(global_stiffness, dis_i))[0]
+            full_en_lst.append(full_cur_en)
+            if is_plot:
+                axs[1][1].set_title('Energy')
+                axs[1][1].plot(time_lst, full_en_lst, color='k', linewidth=1, label='Beam')
+                # axs[0][1].legend()
+            # --------------------------------------------
 
 
                 plt.pause(0.01)
