@@ -28,7 +28,7 @@ def main_body_fun(loc_bar=0.9):
     # ---------определяем параметры геометрии и КЭ образца----------
     L = 1
     # MaxNode = 20 + 1  # количество узлов
-    MaxNode = 190 + 1  # количество узлов
+    # MaxNode = 190 + 1  # количество узлов
     # MaxNode = 290 + 1  # количество узлов
     # dl = L / (MaxNode - 1)
     # dm = dl * ro
@@ -38,13 +38,81 @@ def main_body_fun(loc_bar=0.9):
     # -------------------------------------------------------
     full_en_lst = [0]  # массив полной энергии стержня, кин + потен
 
+    def generate_beam_elements(L, q, x):
+        # Расчет длин элементов с обеих сторон от центра
+        lengths = [x]
+        total_length = x
+        i = 0
+
+        # Добавляем элементы вправо до половины балки
+        while total_length < L / 2:
+            next_length = lengths[i] * q
+            if total_length + next_length > L / 2:
+                break
+            lengths.append(next_length)
+            total_length += next_length
+            i += 1
+
+        # Добавляем элементы влево (зеркально)
+        #     lengths = lengths[::-1] + lengths[1:]
+        lengths = lengths[::-1] + lengths[:]
+        total_length = sum(lengths)
+
+        # Корректировка крайних элементов, если общая длина не равна L
+        if total_length < L:
+            extra = (L - total_length) / 2
+            lengths[0] += extra
+            lengths[-1] += extra
+
+        # подправляем размеры крайних элементов
+        num_left = 0
+        while lengths[0] > lengths[1] * 1.0001:
+            num_left += 1
+            lengths[0] /= 2
+            lengths.insert(0, lengths[0])
+        if num_left > 0:
+            lengths.pop()
+            lengths += [lengths[0]] * (num_left * 2)
+
+        # Словарь длин элементов
+        element_lengths = {i: length for i, length in enumerate(lengths)}
+
+        # Визуализация
+        fig, ax = plt.subplots(figsize=(10, 5))
+        start = 0
+        for length in lengths:
+            ax.add_patch(plt.Rectangle((start, 0), length, 1, facecolor="#D3D3D3", edgecolor="black"))
+            start += length
+        ax.set_xlim(0, L)
+        ax.set_ylim(0, 1)
+        ax.axis('off')
+        plt.title(f"Amount of elements: {len(element_lengths)}\n Sum lenght: {sum(element_lengths.values())}")
+        # plt.show()
+
+        return element_lengths, len(lengths) // 2
+
+    # Пример использования
+    L, q, x = 1, 1.02, 0.0001
+    dict_elements, smallest_index = generate_beam_elements(L, q, x)
+    print("Элементы и их длины:", dict_elements)
+    print("Номер наименьшего элемента:", smallest_index)
+    print("Amount of elements:", len(dict_elements))
+    print("Sum lenght:", sum(dict_elements.values()))
+    print("----------------------------------------------------------")
+    print("Close the figure to continue running the programme.")
+    print("----------------------------------------------------------")
+    plt.show()
+
+    MaxNode = len(dict_elements) + 1  # количество узлов
+    point_bar = smallest_index  # номер эелемента в глобальном векторе сил, на который действует сила VI
+
     # ------------------------------ параметры барьера ----------------------------------
     # loc_bar = 0.9  # местоположение барьера вдоль оси балки (от 0 до 1)
     # point_bar = round((MaxNode - 1) * loc_bar)  # номер эелемента в глобальном векторе сил, на который действует сила VI
-    point_bar = round((MaxNode - 1) / 2)  # номер эелемента в глобальном векторе сил, на который действует сила VI
+    # point_bar = round((MaxNode - 1) / 2)  # номер эелемента в глобальном векторе сил, на который действует сила VI
     # ---------------------------
 
-    elements = [Class_string_elements(i, L, MaxNode, E, S, ro, point_bar) for i in
+    elements = [Class_string_elements(i, L, MaxNode, E, S, ro, point_bar, dict_elements) for i in
                 range(MaxNode - 1)]  # создаем массив балочных элементов
 
     print(sum([elements[i].dl for i in range(MaxNode - 1)]))
@@ -109,7 +177,7 @@ def main_body_fun(loc_bar=0.9):
     time_force = [global_force[point_bar, 0]]  # запоминаем з-ть VI силы
     time_lst = [0]  # массив времени
 
-    step_plot = 100  # каждый 200ый шаг выводим графики
+    step_plot = 400  # каждый 200ый шаг выводим графики
     number_mode_plot = 10  # количество мод, которое выводим на графиках
     en_func = []  # лист функционала энергии
     en_func_2 = []  # лист второго функционала энергии
@@ -129,6 +197,8 @@ def main_body_fun(loc_bar=0.9):
     axs[1][0].plot(time_lst, time_disp_end, 'k', linewidth=1)
     axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)
 
+    axs[0][1].set_title('Initial velocity')
+    axs[0][1].grid()
     axs[0][1].plot(nodes_coor, [vel_i[i, 0] for i in range(MaxNode)], 'r', linewidth=1)
 
     plt.pause(2)
@@ -228,6 +298,9 @@ def main_body_fun(loc_bar=0.9):
                 axs[0][0].set_title('Beam shape')
                 axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=7, pad=0)
                 axs[2][0].set_title('VI force, max ' + str('%.2f' % max(time_force)))
+                axs[0][0].grid()
+                axs[1][0].grid()
+                axs[2][0].grid()
                 # fig.suptitle('Time = ' + str('%.2f' % t)
                 #              + ' s = ' + str('%.2f' % (t * 1e3)) + ' ms = ' + str('%.2f' % (t * 1e6)) + ' µs')
                 fig.suptitle('Real Time = ' + str('%.2f' % t)
@@ -255,6 +328,7 @@ def main_body_fun(loc_bar=0.9):
             full_en_lst.append(full_cur_en)
             if is_plot:
                 axs[1][1].set_title('Energy')
+                axs[1][1].grid(True)
                 axs[1][1].plot(time_lst, full_en_lst, color='k', linewidth=1, label='Beam')
                 # axs[0][1].legend()
             # --------------------------------------------
