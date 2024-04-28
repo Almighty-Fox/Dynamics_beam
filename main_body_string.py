@@ -219,7 +219,7 @@ def main_body_fun(loc_bar=0.9):
     # начинаем цикл по времени
     t = 0
     # t_end = 0.15
-    t_end = 55
+    t_end = 0.5
 
     # dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
     dt_lst = [1e-5] * 3  # лист временных шагов без барьера
@@ -350,6 +350,12 @@ def main_body_fun(loc_bar=0.9):
             modal_vel_i = np.matmul(np.linalg.inv(eigenvectors_normalized), vel_i)
             modal_vel_i_transp = [modal_vel for sublist in modal_vel_i for modal_vel in sublist]
             # --------------------------------------------------------
+
+        # writing results
+        with open(r'./plots/VI_force_string_FEM_time.txt', 'w') as cur_file:
+            cur_file.write(str(time_lst))
+        with open(r'./plots/VI_force_string_FEM_values.txt', 'w') as cur_file:
+            cur_file.write(str(time_force))
 
 
 
