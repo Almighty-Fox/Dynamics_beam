@@ -210,7 +210,7 @@ def main_body_fun(loc_bar=0.9):
 
     # ------- для вычисления силы VI ----------------------
     R_barrier = 10e-3
-    k_c = 1e5 * 2 * E * (R_barrier ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
+    k_c = 1e3 * 2 * E * (R_barrier ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
     print('k_c = {}'.format(k_c))
     # -------------------------------------------------------------------------------------
     global_force = create_global_force(global_force, f_ampl=0)  # обнуляем силу на конце балки
@@ -222,7 +222,7 @@ def main_body_fun(loc_bar=0.9):
     t_end = 0.5
 
     # dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
-    dt_lst = [1e-5] * 3  # лист временных шагов без барьера
+    dt_lst = [1e-3] * 3  # лист временных шагов без барьера
     # Начинаем с самого большого шага. Если этим большим шагом зашли вовнутрь барьера, то откываемся на шаг цикла назад и меняем временной шаг на следующий в листе.
     # Так делаем до тех пор, пока шаг не станет самым маленьким из списка. Потом считаем на этом шаге, но как только балка выйдет из барьера, каждый
     # следующий шаг делаем на один больше из списка.
@@ -352,9 +352,9 @@ def main_body_fun(loc_bar=0.9):
             # --------------------------------------------------------
 
         # writing results
-        with open(r'./plots/VI_force_string_FEM_time.txt', 'w') as cur_file:
+        with open(r'./plots/VI_force_string_FEM_time_1e3.txt', 'w') as cur_file:
             cur_file.write(str(time_lst))
-        with open(r'./plots/VI_force_string_FEM_values.txt', 'w') as cur_file:
+        with open(r'./plots/VI_force_string_FEM_values_1e3.txt', 'w') as cur_file:
             cur_file.write(str(time_force))
 
 

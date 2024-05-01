@@ -26,8 +26,8 @@ def read_file(file_name):
 
 
 def plot_fit_an_fem():
-    time_lst = read_file(r'./plots/VI_force_string_FEM_time.txt')
-    y_values = read_file(r'./plots/VI_force_string_FEM_values.txt')
+    time_lst = read_file(r'./plots/VI_force_string_FEM_time_1e3.txt')
+    y_values = read_file(r'./plots/VI_force_string_FEM_values_1e3.txt')
 
     plt.figure(1)
     plt.plot(time_lst, y_values, 'r', label='FEM')

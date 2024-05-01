@@ -52,8 +52,8 @@ def main_body_fun(loc_bar=0.9):
 
     # ksi_list = np.array([0.03] * (2 * MaxNode))
     # ksi_list = np.array([0, 0.015, 0.015, 0.015, 0.015, 0] + [0.015] * 36)
-    # ksi_list = np.array([0.0] * (2 * MaxNode))
-    ksi_list = np.array([0.0] + [0.0015] * (2 * MaxNode - 1))
+    ksi_list = np.array([0.0] * (2 * MaxNode))
+    # ksi_list = np.array([0.0] + [0.0015] * (2 * MaxNode - 1))
 
     list_diag_damping_modal = 2 * ksi_list * (eigenvalues ** 0.5)
     global_damping_modal = np.diag(list_diag_damping_modal)
@@ -74,18 +74,25 @@ def main_body_fun(loc_bar=0.9):
     dis_i = np.zeros((2 * MaxNode, 1))  # начальный вектор координат
     # dis_i = start_def.copy()  # начальный вектор координат
 
-    # vel_i = np.zeros((2 * MaxNode, 1))  # начальный вектор скоростей
-    with open(r'./plots/initial_vel_compare.txt', 'r') as cur_file:
-        body_file = cur_file.readlines()
-        body_file_clean = []
-        for line in body_file:
-            body_file_clean += (line.replace('\n', ' ').replace('[', '').replace(']', '').split())
+    # # vel_i = np.zeros((2 * MaxNode, 1))  # начальный вектор скоростей
+    # with open(r'./plots/initial_vel_compare.txt', 'r') as cur_file:
+    #     body_file = cur_file.readlines()
+    #     body_file_clean = []
+    #     for line in body_file:
+    #         body_file_clean += (line.replace('\n', ' ').replace('[', '').replace(']', '').split())
+    #
+    #     body_file_clean_array = np.array(body_file_clean, dtype=float)
+    #
+    # vel_i = np.zeros((2 * MaxNode, 1))
+    # for i in range(MaxNode):
+    #     vel_i[i*2, 0] = body_file_clean_array[i]
 
-        body_file_clean_array = np.array(body_file_clean, dtype=float)
-
-    vel_i = np.zeros((2 * MaxNode, 1))
-    for i in range(MaxNode):
-        vel_i[i*2, 0] = body_file_clean_array[i]
+    vel_i = np.array([eigenvectors_normalized[i][1] for i in range(2 * MaxNode)])
+    print(vel_i)
+    vel_i = vel_i / max(abs(np.array([vel_i[i * 2] for i in range(MaxNode)]))) * 0.00104555517331218
+    print(max(abs(vel_i)))
+    vel_i = vel_i.reshape(-1, 1)
+    # 0.00104555517331218
 
     # print(vel_i)
     # print(len(vel_i))
@@ -134,10 +141,12 @@ def main_body_fun(loc_bar=0.9):
     axs[1][0].plot(time_lst, time_disp, 'g', linewidth=1)
     axs[1][0].plot(time_lst, time_disp_end, 'k', linewidth=1)
     axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)
-    plt.pause(2)
+    axs[2][2].plot(np.linspace(0, L, num=MaxNode), [vel_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
+    plt.pause(7)
     axs[0][0].clear()
     axs[1][0].clear()
     axs[2][0].clear()
+    axs[2][2].clear()
 
     # ------- для вычисления силы VI ----------------------
     R_barrier = 10e-3
@@ -192,7 +201,7 @@ def main_body_fun(loc_bar=0.9):
     # t_end = 0.15
     t_end = 0.55
 
-    dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
+    dt_lst = [1e-7, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
     # dt_lst = [1e-6] * 3  # лист временных шагов без барьера
     # Начинаем с самого большого шага. Если этим большим шагом зашли вовнутрь барьера, то откываемся на шаг цикла назад и меняем временной шаг на следующий в листе.
     # Так делаем до тех пор, пока шаг не станет самым маленьким из списка. Потом считаем на этом шаге, но как только балка выйдет из барьера, каждый
@@ -207,6 +216,7 @@ def main_body_fun(loc_bar=0.9):
 
     check_if, check_if_2 = True, True
     check_while = True
+    add_flag = True
 
     try:
         while (t < t_end) and check_while:
@@ -333,7 +343,8 @@ def main_body_fun(loc_bar=0.9):
 
             if is_plot:
                 axs[0][0].set_title('Beam shape')
-                axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=7, pad=0)
+                # axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=7, pad=0)
+                axs[1][0].set_title(str('Disp end, min = %.4g' % (min(time_disp_end))))
                 axs[2][0].set_title('VI force')
                 # fig.suptitle('Time = ' + str('%.2f' % t)
                 #              + ' s = ' + str('%.2f' % (t * 1e3)) + ' ms = ' + str('%.2f' % (t * 1e6)) + ' µs')
@@ -477,6 +488,15 @@ def main_body_fun(loc_bar=0.9):
                 axs[1][2].clear()
                 axs[2][2].clear()
 
+            #----------------------------------------------------
+            if add_flag and (time_lst[-1] >= 0.02):
+                add_flag = False
+                with open(r'./plots/green_FEM_compare/FEM_time_lst_VI_03.txt', 'w') as cur_file:
+                    cur_file.write(str(time_lst))
+                with open(r'./plots/green_FEM_compare/FEM_time_disp_end_VI_03.txt', 'w') as cur_file:
+                    cur_file.write(str(time_disp_end))
+            # ----------------------------------------------------
+
             # для экономии времени записи листов в файл и экономии места в этих листах, будем каждые сколько то шагов сбрасывать значения в новый файл и обнулять листы
             if len(time_lst) % (step_plot * 500) == 0:
                 # time_disp_end, time_disp(berrier), time_lst, time_force, full_en_lst, earthquake_en_lst, en_func, time_en_func
@@ -549,9 +569,9 @@ if __name__ == '__main__':
     #     main_body_fun(loc_bar=loc_bar)
     #     plt.close()
 
-    loc_bar = 0.8
+    loc_bar = 0.3
     path = './plots/location_{}/'.format(round(loc_bar, 1))
-    os.mkdir(path)
+    # os.mkdir(path)
     # with open(path + 'readme.txt', 'w') as f:
     #     f.write('Close to the barrier 1e-8\nFar from the berrier 2e-6\nForce 1\nkc = 1\ndelta = 0')
     main_body_fun(loc_bar=loc_bar)
