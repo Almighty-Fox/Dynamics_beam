@@ -219,7 +219,7 @@ section_side = 10e-3
 J_inertia = section_side ** 4 / 12
 ro_density = 7850
 l_length = 1
-l_barrier = 0.5
+l_barrier = 0.3
 F_section = section_side ** 2
 
 points = 100 + 1

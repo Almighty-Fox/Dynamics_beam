@@ -11,13 +11,13 @@ def read_file(file_name):
 
 
 def plot_fit_an_fem():
-    time_lst = read_file(r'./plots/green_FEM_compare/FEM_time_lst_VI_03.txt')
-    y_values = read_file(r'./plots/green_FEM_compare/FEM_time_disp_end_VI_03.txt')
+    time_lst = read_file(r'./plots/green_FEM_compare/FEM_time_lst_VI.txt')
+    y_values = read_file(r'./plots/green_FEM_compare/FEM_time_disp_end_VI.txt')
     plt.figure(1)
     plt.plot(time_lst, y_values, 'r', label='FEM')
 
-    time_lst = read_file(r'./plots/green_FEM_compare/green_time_lst_VI_03.txt')
-    y_values = read_file(r'./plots/green_FEM_compare/green_time_disp_end_VI_03.txt')
+    time_lst = read_file(r'./plots/green_FEM_compare/green_time_lst_VI.txt')
+    y_values = read_file(r'./plots/green_FEM_compare/green_time_disp_end_VI.txt')
     plt.figure(1)
     plt.plot(time_lst, y_values, 'k', label='Green function')
 
