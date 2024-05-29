@@ -48,9 +48,22 @@ def beam_without_barrier():
     return roots1 / l_length, D1, forms1, omegas1, omegas2, form1_second_dif
 
 
+def read_file(file_name):
+    with open(file_name, 'r') as file:
+        content = file.read()
+        # Assuming each file contains a single line with data in the format "[x, y, z]"
+        data = eval(content)
+        print(data)
+        return np.array(data)
+
+
 def initial_conditions():
     disp_start = np.zeros(points)
-    vel_start = -omegas1[0] * forms1[0] / 100000
+    # vel_start = -omegas1[0] * forms1[0] / 100000
+    vel_start = omegas1[5] * forms1[5] / 100000
+
+    # disp_start = -omegas1[1] * forms1[1] / 100000
+    # vel_start = np.zeros(points)
 
     # plt.plot(np.linspace(0, 1, points), vel_start)
     # x_fun = np.linspace(0, 1, points)
@@ -58,10 +71,16 @@ def initial_conditions():
     # plt.show()
     # with open(r'./plots/initial_vel_compare.txt', 'w') as cur_file:
     #     cur_file.write(str(vel_start))
-
     # print('Wriring success')
 
-    # vel_start = omegas1[0] * forms1[0] * 0
+    # disp_start = read_file(r'./plots/VI_delta_finding_mistake/disp_VI_05.txt')
+    # vel_start = read_file(r'./plots/VI_delta_finding_mistake/vel_VI_05.txt')
+
+    # plt.figure()
+    # plt.plot(np.linspace(0, 1, points), vel_start)
+    # plt.plot([0.5], [0], 'r.')
+    # plt.grid()
+    # plt.show()
 
     return disp_start, vel_start
 
@@ -129,6 +148,7 @@ def dynamic_beam_recalc_integ():
         print(t_lst[-1])
         slag_free = 0
         for k in range(len(omegas1)):
+            print(np.cos(omegas1[k] * t_lst[-1]))
             slag_free_add = forms1_barrier[k] * (
                     A_lst[k] * np.cos(omegas1[k] * t_lst[-1]) + B_lst[k] * np.sin(omegas1[k] * t_lst[-1]))
             slag_free += slag_free_add
@@ -150,14 +170,15 @@ def dynamic_beam_recalc_integ():
         slag1 = slag_koef * sum([1 / rk_lst[ii]**2 * forms1_barrier[ii]**2 / D1[ii]**2 * prev_sum[ii] for ii in range(len(omegas1))])
         # slag2 = 1
         Pq_new = (-slag_free - slag_delta - slag1) / slag2
+        # print(f'Pq_new = {Pq_new}')
         # Pq_new = 0
 
-        # print(f'N = {len(Pq_lst)}')
+        print(f'N = {len(Pq_lst)}')
         # print(f'slag_free = {slag_free}')
+        # print(f'slag_delta = {slag_delta}')
         # print(f'slag1 = {slag1}')
         # print(f'slag2 = {slag2}')
         # print(f'Pq = {Pq_new}')
-        # print(f'slag_delta = {slag_delta}')
         # print(f'-slag_free - slag_delta = {-slag_free - slag_delta}')
 
         Pq_lst.append(Pq_new * slag2_koef_norm)
@@ -199,7 +220,7 @@ def dynamic_beam_recalc_integ():
         axs[2].plot(t_lst, disp_end_lst, 'k', linewidth=1, marker='')
         axs[2].grid(True)
 
-        plt.pause(0.01)
+        plt.pause(0.0001)
         axs[0].clear()
         axs[1].clear()
         axs[2].clear()
@@ -208,10 +229,10 @@ def dynamic_beam_recalc_integ():
 
         # print(f'Pq_new = {Pq_new}')
 
-    with open(r'./plots/green_FEM_compare/green_time_lst_VI_05.txt', 'w') as cur_file:
-        cur_file.write(str(t_lst[:-1]))
-    with open(r'./plots/green_FEM_compare/green_time_disp_end_VI_05.txt', 'w') as cur_file:
-        cur_file.write(str(disp_end_lst))
+    # with open(r'./plots/green_FEM_compare/green_time_lst_VI_05.txt', 'w') as cur_file:
+    #     cur_file.write(str(t_lst[:-1]))
+    # with open(r'./plots/green_FEM_compare/green_time_disp_end_VI_05.txt', 'w') as cur_file:
+    #     cur_file.write(str(disp_end_lst))
 
 
 E_young = 2e11
@@ -219,10 +240,12 @@ section_side = 10e-3
 J_inertia = section_side ** 4 / 12
 ro_density = 7850
 l_length = 1
+# l_barrier = 0.783
+# l_barrier = 0.59
 l_barrier = 0.3
 F_section = section_side ** 2
 
-points = 100 + 1
+points = 400 + 1
 dl = l_length / (points - 1)
 point_barrier = round((points - 1) * l_barrier)
 Hertz_koef = 1

@@ -87,12 +87,23 @@ def main_body_fun(loc_bar=0.9):
     # for i in range(MaxNode):
     #     vel_i[i*2, 0] = body_file_clean_array[i]
 
-    vel_i = np.array([eigenvectors_normalized[i][1] for i in range(2 * MaxNode)])
-    print(vel_i)
-    vel_i = vel_i / max(abs(np.array([vel_i[i * 2] for i in range(MaxNode)]))) * 0.00104555517331218
-    print(max(abs(vel_i)))
+    # vel_i = np.array([eigenvectors_normalized[i][1] for i in range(2 * MaxNode)])
+    # print(vel_i)
+    # vel_i = vel_i / max(abs(np.array([vel_i[i * 2] for i in range(MaxNode)]))) * 0.00104555517331218
+    # print(max(abs(vel_i)))
+    # vel_i = vel_i.reshape(-1, 1)
+
+    # another initial velosity field
+    vel_i = -np.array([eigenvectors_normalized[i][5] for i in range(2 * MaxNode)])
+    # vel_i = np.array([eigenvectors_normalized[i][1] for i in range(2 * MaxNode)])
+    # 0.0870046506141702
+    vel_i = vel_i / max(abs(np.array([vel_i[i * 2] for i in range(MaxNode)]))) * 0.05824308943878395
+    # plt.title('Initial velocity field')
+    # plt.plot(np.linspace(0, 1, MaxNode), [vel_i[i * 2] for i in range(MaxNode)])
+    # plt.plot([0.3], [0], 'r.')
+    # plt.grid()
+    # plt.show()
     vel_i = vel_i.reshape(-1, 1)
-    # 0.00104555517331218
 
     # print(vel_i)
     # print(len(vel_i))
@@ -118,7 +129,9 @@ def main_body_fun(loc_bar=0.9):
     time_lst = [0]  # массив времени
 
     step_plot = 3000  # каждый 200ый шаг выводим графики
-    number_mode_plot = 10  # количество мод, которое выводим на графиках
+    # step_plot = 300  # каждый 200ый шаг выводим графики
+    # number_mode_plot = 10  # количество мод, которое выводим на графиках
+    number_mode_plot = 16  # количество мод, которое выводим на графиках
     full_en_lst = [0]  # массив полной энергии стержня, кин + потен
     earthquake_en_lst = [0]  # массив энергии, переданной балке через силы инерции
     en_func = []  # лист функционала энергии
@@ -142,7 +155,7 @@ def main_body_fun(loc_bar=0.9):
     axs[1][0].plot(time_lst, time_disp_end, 'k', linewidth=1)
     axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)
     axs[2][2].plot(np.linspace(0, L, num=MaxNode), [vel_i[i * 2, 0] for i in range(MaxNode)], 'r', linewidth=1)
-    plt.pause(7)
+    plt.pause(1)
     axs[0][0].clear()
     axs[1][0].clear()
     axs[2][0].clear()
@@ -201,7 +214,7 @@ def main_body_fun(loc_bar=0.9):
     # t_end = 0.15
     t_end = 0.55
 
-    dt_lst = [6e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
+    dt_lst = [1e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
     # dt_lst = [1e-6] * 3  # лист временных шагов без барьера
     # Начинаем с самого большого шага. Если этим большим шагом зашли вовнутрь барьера, то откываемся на шаг цикла назад и меняем временной шаг на следующий в листе.
     # Так делаем до тех пор, пока шаг не станет самым маленьким из списка. Потом считаем на этом шаге, но как только балка выйдет из барьера, каждый
@@ -417,11 +430,13 @@ def main_body_fun(loc_bar=0.9):
 
 
             # energy_values = [full_en_mode[i] for i in [1, 2, 3, 4, 6, 7, 8, 9]]
-            energy_values = [full_en_mode[i] for i in [1, 2, 3, 4, 5, 6, 7, 8, 9]]  # 101 nodes
+            # energy_values = [full_en_mode[i] for i in [1, 2, 3, 4, 5, 6, 7, 8, 9]]  # 101 nodes
+            energy_values = [full_en_mode[i] for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]
             if np.sum(energy_values) != 0:
             # if True:
             #     omega_first = np.array([(eigenvalues[i]) ** 0.5 for i in [1, 2, 3, 4, 6, 7, 8, 9]])
-                omega_first = np.array([(eigenvalues[i]) ** 0.5 for i in [1, 2, 3, 4, 5, 6, 7, 8, 9]])  # 101 nodes
+            #     omega_first = np.array([(eigenvalues[i]) ** 0.5 for i in [1, 2, 3, 4, 5, 6, 7, 8, 9]])  # 101 nodes
+                omega_first = np.array([(eigenvalues[i]) ** 0.5 for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]])
                 energy_density = np.array([(en_cur / np.sum(energy_values)) for en_cur in energy_values])
                 en_func_cur = -np.sum(energy_density * np.log(energy_density))  # энтропия
                 en_func_cur_2 = np.sum(energy_density * omega_first)  # придуманный функционал
@@ -438,7 +453,8 @@ def main_body_fun(loc_bar=0.9):
                 # axs[1][1].bar(df.index[:number_mode_plot], df.origin[:number_mode_plot])
 
                 # axs[1][1].bar(np.arange(1, number_mode_plot - 1), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 6, 7, 8, 9]])
-                axs[1][1].bar(np.arange(1, number_mode_plot), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 5, 6, 7, 8, 9]])  # 101 nodes
+                # axs[1][1].bar(np.arange(1, number_mode_plot), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 5, 6, 7, 8, 9]])  # 101 nodes
+                axs[1][1].bar(np.arange(1, number_mode_plot), df.origin[:number_mode_plot].iloc[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]])
 
                 # axs[1][1].axis([0, df.index[number_mode_plot], 0, 1e-3])
                 # axs[1][1].axis([0, df.index[number_mode_plot] - 2, 0, 1e-3])
@@ -488,14 +504,14 @@ def main_body_fun(loc_bar=0.9):
                 axs[1][2].clear()
                 axs[2][2].clear()
 
-            #----------------------------------------------------
-            if add_flag and (time_lst[-1] >= 0.02):
-                add_flag = False
-                with open(r'./plots/green_FEM_compare/FEM_time_lst_VI_03.txt', 'w') as cur_file:
-                    cur_file.write(str(time_lst))
-                with open(r'./plots/green_FEM_compare/FEM_time_disp_end_VI_03.txt', 'w') as cur_file:
-                    cur_file.write(str(time_disp_end))
-            # ----------------------------------------------------
+            # #----------------------------------------------------
+            # if add_flag and (time_lst[-1] >= 0.01):
+            #     add_flag = False
+            #     with open(r'./plots/VI_delta_finding_mistake/FEM_time_lst_VI_5_mode_free.txt', 'w') as cur_file:
+            #         cur_file.write(str(time_lst))
+            #     with open(r'./plots/VI_delta_finding_mistake/FEM_time_disp_end_VI_5_mode_free.txt', 'w') as cur_file:
+            #         cur_file.write(str(time_disp_end))
+            # # ----------------------------------------------------
 
             # для экономии времени записи листов в файл и экономии места в этих листах, будем каждые сколько то шагов сбрасывать значения в новый файл и обнулять листы
             if len(time_lst) % (step_plot * 500) == 0:
@@ -569,7 +585,7 @@ if __name__ == '__main__':
     #     main_body_fun(loc_bar=loc_bar)
     #     plt.close()
 
-    loc_bar = 0.3
+    loc_bar = 0.4
     path = './plots/location_{}/'.format(round(loc_bar, 1))
     # os.mkdir(path)
     # with open(path + 'readme.txt', 'w') as f:
