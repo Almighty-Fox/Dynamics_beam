@@ -124,9 +124,9 @@ def beam_no_VI_vibrations(disp_start, vel_start):
     flag_write = True
 
     # while ((y_list[point_barrier] >= 0) or (first_step)) and (not time_is_up):
-    while True:
+    # while True:
         # print(time_global[-1])
-    # while y_list[point_barrier] > 0:
+    while y_list[point_barrier] >= 0:
     # while ((y_list[point_barrier] >= 0) or (first_step)) or ((y_list[point_barrier] <= 0) and (vel_list[point_barrier] > 0)):
     # while flag_free or (y_list[point_barrier] >= 0):
         # print(f'y_list[point_barrier] {y_list[point_barrier]}')
@@ -170,16 +170,16 @@ def beam_no_VI_vibrations(disp_start, vel_start):
         #     with open(r'./plots/VI_delta_finding_mistake/vel_VI_05.txt', 'w') as cur_file:
         #         cur_file.write(str(list(vel_list)))
 
-        if (time_global[-1] > 0.01) and flag_write:
-            flag_write = False
-            with open(r'./plots/VI_delta_finding_mistake/time_global_maple_roots_4_mode.txt', 'w') as cur_file:
-                cur_file.write(str(list(time_global)))
-            with open(r'./plots/VI_delta_finding_mistake/y_end_global_maple_roots_4_mode.txt', 'w') as cur_file:
-                cur_file.write(str(list(y_end_global)))
+        # if (time_global[-1] > 0.01) and flag_write:
+        #     flag_write = False
+        #     with open(r'./plots/VI_delta_finding_mistake/time_global_maple_roots_4_mode.txt', 'w') as cur_file:
+        #         cur_file.write(str(list(time_global)))
+        #     with open(r'./plots/VI_delta_finding_mistake/y_end_global_maple_roots_4_mode.txt', 'w') as cur_file:
+        #         cur_file.write(str(list(y_end_global)))
 
 
     # ПЕРЕКЛЮЧАЕМ НА БАЛКУ С БАРЬЕРОМ
-    # beam_with_VI_vibrations(y_list, vel_list)
+    beam_with_VI_vibrations(y_list, vel_list)
 
     return y_list, vel_list, A_lst, B_lst, t_loc
 
@@ -232,10 +232,10 @@ def beam_with_VI_vibrations(disp_start, vel_start):
 
 
     # while ((Pq_new >= 0) and (not time_is_up)): # or first_step:
-    # while True:
+    while True:
     # while ((Pq_new >= 0) and (not time_is_up)) or (vel_new[point_barrier] < 0):
     # while Pq_new > 0:
-    while (time_global[-1] < 0.0002) or (Pq_new > 0):
+    # while (time_global[-1] < 0.0002) or (Pq_new > 0):
         # first_step = False
         t_loc_free += tau
         time_global.append(time_global[-1] + tau)
@@ -274,12 +274,13 @@ def beam_with_VI_vibrations(disp_start, vel_start):
         slag1 = slag_koef * sum([1 / rk_lst[ii]**2 * forms1_barrier[ii]**2 / D1[ii]**2 * disp_prev_sum[ii] for ii in range(len(omegas1))])
         Pq_new = (-disp_slag_free - disp_slag_delta - slag1) / slag2
 
-        # print(f'Time = {time_global[-1]}')
-        # print(f'disp_list_free = {disp_slag_free}')
-        # print(f'disp_slag_delta = {disp_slag_delta}')
-        # print(f'slag1 = {slag1}')
-        # print(f'slag2 = {slag2}')
-        # print(f'Pq_new = {Pq_new}')
+        print(f'Time = {time_global[-1]}')
+        print(f'disp_list_free = {disp_slag_free}')
+        print(f'disp_slag_delta = {disp_slag_delta}')
+        print(f'slag1 = {slag1}')
+        print(f'slag2 = {slag2}')
+        print(f'Pq_new = {Pq_new}')
+        print('CHECK')
 
         Pq_lst_loc.append(Pq_new)
         Pq_global.append(Pq_new)
@@ -370,7 +371,7 @@ def beam_with_VI_vibrations(disp_start, vel_start):
 def initial_conditions():
     disp_start = np.zeros(points)
     # vel_start = -omegas1[0] * forms1[0] / 100000
-    vel_start = omegas1[4] * forms1[4] / 100000
+    vel_start = -omegas1[4] * forms1[4] / 100000
 
     print(vel_start[-1])
     plt.plot(np.linspace(0, 1, points), vel_start)
@@ -482,11 +483,10 @@ fig, axs = plt.subplots(4, 1, squeeze=False)  # создаем саб плот �
 plt.subplots_adjust(wspace=0.3, hspace=0.4)
 plt.pause(2)
 
-A_lst_initial, B_lst_initial = det_AB_before_VI(disp_start, vel_start)
+# A_lst_initial, B_lst_initial = det_AB_before_VI(disp_start, vel_start)
+# [disp_start, vel_start] = beam_with_VI_vibrations(disp_start, vel_start)
 
-
-[disp_start, vel_start] = beam_with_VI_vibrations(disp_start, vel_start)
-print(f'vel after VI = {vel_start[point_barrier]}')
+# print(f'vel after VI = {vel_start[point_barrier]}')
 # while True:
 while not time_is_up:
     print('Time = ', str(time_global[-1]))
