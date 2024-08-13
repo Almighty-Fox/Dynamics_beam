@@ -22,3 +22,12 @@ class Class_beam_elements:
              [22 * self.dl, 4 * self.dl * self.dl, 13 * self.dl, -3 * self.dl * self.dl],
              [54, 13 * self.dl, 156, -22 * self.dl],
              [-13 * self.dl, -3 * self.dl * self.dl, -22 * self.dl, 4 * self.dl * self.dl]])
+        # для модели Рэлея добавляем rotational inertia mass component
+        # \
+        #
+        # + self.ro / (10e-3)**2 * self.I * self.dl / 30 \
+        #            * np.array(  # создаем матрицу масс для каждого элемента (Mass_matrix_beam_elements.jpg)
+        #     [[36, 3 * self.dl, -36, 3 * self.dl],
+        #      [3 * self.dl, 4 * self.dl * self.dl, -3 * self.dl, -1 * self.dl * self.dl],
+        #      [-36, -3 * self.dl, 36, -3 * self.dl],
+        #      [3 * self.dl, -1 * self.dl * self.dl, -3 * self.dl, 4 * self.dl * self.dl]])

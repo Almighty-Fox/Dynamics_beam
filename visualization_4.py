@@ -106,6 +106,114 @@ def plot_analytics():
     return x_lst, y_lst
 
 
+def plot_analytics_velocity():
+    t = 0.5
+    loc_bar = 0.7
+    a = loc_bar
+    sep1 = loc_bar - 0.5
+    sep2 = loc_bar
+    sep3 = 1.5 - loc_bar
+    x_lst_sep1 = np.linspace(0, sep1, round(sep1 / 1e-3))
+    x_lst_sep2 = np.linspace(sep1, sep2, round((sep2 - sep1) / 1e-3))
+    x_lst_sep3 = np.linspace(sep2, sep3, round((sep3 - sep2) / 1e-3))
+    x_lst_sep4 = np.linspace(sep3, 1, round((1 - sep3) / 1e-3))
+
+    x = x_lst_sep1.copy()
+    y_lst_sep1 = (np.pi * np.sin(np.pi * x) * np.cos(np.pi * t) - 2 * np.sin(np.pi * a) *
+                  (np.sin(np.pi * x) * np.sin(np.pi * a) * (np.sin(np.pi * t) + np.pi * t * np.cos(np.pi * t)) +
+                   (-np.sin(np.pi * t) * 1 / 2 * (
+                               -np.sin(np.pi * (a - x)) * np.pi * (1 - a + x) + 1 + 1 / 2 * np.cos(np.pi * (a - x))) +
+                    np.sin(np.pi * t) * 1 / 2 * (
+                                -np.sin(np.pi * (x + a)) * np.pi * (1 - x - a) + 1 + 1 / 2 * np.cos(np.pi * (x + a)))) +
+                   1 / 4 * ((np.pi - np.pi * (t - x + a)) * np.cos(np.pi*(t - x + a)) - 1 / 2 * np.sin(np.pi*(t - x + a)) -
+                            (np.pi - np.pi * (-t - x + a)) * np.cos(np.pi*(-t - x + a)) + 1 / 2 * np.sin(np.pi*(-t - x + a)) +
+                            (np.pi - np.pi * (-t + x + a)) * np.cos(np.pi*(-t + x + a)) - 1 / 2 * np.sin(np.pi*(-t + x + a)) -
+                            (np.pi - np.pi * (t + x + a)) * np.cos(np.pi*(t + x + a)) + 1 / 2 * np.sin(np.pi*(t + x + a)))))
+
+    x = x_lst_sep2.copy()
+    y_lst_sep2 = (np.pi * np.sin(np.pi * x) * np.cos(np.pi * t) - 2 * np.sin(np.pi * a) *
+                  (np.sin(np.pi * x) * np.sin(np.pi * a) * (np.sin(np.pi * t) + np.pi * t * np.cos(np.pi * t)) +
+                   (-np.sin(np.pi * t) * 1 / 2 * (
+                               -np.sin(np.pi * (a - x)) * np.pi * (1 - a + x) + 1 + 1 / 2 * np.cos(np.pi * (a - x))) +
+                    np.sin(np.pi * t) * 1 / 2 * (
+                                -np.sin(np.pi * (x + a)) * np.pi * (1 - x - a) + 1 + 1 / 2 * np.cos(np.pi * (x + a)))) +
+                   1 / 4 * ((np.pi - np.pi * (t - x + a)) * np.cos(np.pi*(t - x + a)) - 1 / 2 * np.sin(np.pi*(t - x + a)) +
+                            (np.pi - np.pi * (t + x - a)) * np.cos(np.pi*(t + x - a)) - 1 / 2 * np.sin(np.pi*(t + x - a)) +
+                            (np.pi - np.pi * (-t + x + a)) * np.cos(np.pi*(-t + x + a)) - 1 / 2 * np.sin(np.pi*(-t + x + a)) -
+                            (np.pi - np.pi * (t + x + a)) * np.cos(np.pi*(t + x + a)) + 1 / 2 * np.sin(np.pi*(t + x + a)))))
+
+    x = x_lst_sep3.copy()
+    y_lst_sep3 = (np.pi * np.sin(np.pi * x) * np.cos(np.pi * t) - 2 * np.sin(np.pi * a) *
+                  (np.sin(np.pi * x) * np.sin(np.pi * a) * (np.sin(np.pi * t) + np.pi * t * np.cos(np.pi * t)) +
+                   (-np.sin(np.pi * t) * 1 / 2 * (
+                               -np.sin(np.pi * (x - a)) * np.pi * (1 - x + a) + 1 + 1 / 2 * np.cos(np.pi * (x - a))) +
+                    np.sin(np.pi * t) * 1 / 2 * (
+                                -np.sin(np.pi * (x + a)) * np.pi * (1 - x - a) + 1 + 1 / 2 * np.cos(np.pi * (x + a)))) +
+                   1 / 4 * ((np.pi - np.pi * (t - x + a)) * np.cos(np.pi*(t - x + a)) - 1 / 2 * np.sin(np.pi*(t - x + a)) +
+                            (np.pi - np.pi * (t + x - a)) * np.cos(np.pi*(t + x - a)) - 1 / 2 * np.sin(np.pi*(t + x - a)) +
+                            (np.pi - np.pi * (-t + x + a)) * np.cos(np.pi*(-t + x + a)) - 1 / 2 * np.sin(np.pi*(-t + x + a)) -
+                            (np.pi - np.pi * (t + x + a)) * np.cos(np.pi*(t + x + a)) + 1 / 2 * np.sin(np.pi*(t + x + a)))))
+
+    x = x_lst_sep4.copy()
+    y_lst_sep4 = (np.pi * np.sin(np.pi * x) * np.cos(np.pi * t) - 2 * np.sin(np.pi * a) *
+                  (np.sin(np.pi * x) * np.sin(np.pi * a) * (np.sin(np.pi * t) + np.pi * t * np.cos(np.pi * t)) +
+                   (-np.sin(np.pi * t) * 1 / 2 * (
+                               -np.sin(np.pi * (x - a)) * np.pi * (1 - x + a) + 1 + 1 / 2 * np.cos(np.pi * (x - a))) +
+                    np.sin(np.pi * t) * 1 / 2 * (
+                                -np.sin(np.pi * (x + a)) * np.pi * (1 - x - a) + 1 + 1 / 2 * np.cos(np.pi * (x + a)))) +
+                   1 / 4 * ((np.pi - np.pi * (t - x + a)) * np.cos(np.pi*(t - x + a)) - 1 / 2 * np.sin(np.pi*(t - x + a)) +
+                            (np.pi - np.pi * (t + x - a)) * np.cos(np.pi*(t + x - a)) - 1 / 2 * np.sin(np.pi*(t + x - a)) +
+                            (np.pi - np.pi * (-t + x + a)) * np.cos(np.pi*(-t + x + a)) - 1 / 2 * np.sin(np.pi*(-t + x + a)) -
+                            (np.pi - np.pi * (t + x + a - 2)) * np.cos(np.pi*(t + x + a - 2)) + 1 / 2 * np.sin(np.pi*(t + x + a - 2)))))
+
+    x_lst = list(x_lst_sep1) + list(x_lst_sep2) + list(x_lst_sep3) + list(x_lst_sep4)
+    y_lst = list(y_lst_sep1) + list(y_lst_sep2) + list(y_lst_sep3) + list(y_lst_sep4)
+
+    return x_lst, y_lst
+
+
+# def plot_analytics_velocity():
+#     t = 0.5
+#     loc_bar = 0.7
+#     a = loc_bar
+#     sep1 = loc_bar - 0.5
+#     sep2 = loc_bar
+#     sep3 = 1.5 - loc_bar
+#     x_lst_sep1 = np.linspace(0, sep1, round(sep1 / 1e-3))
+#     x_lst_sep2 = np.linspace(sep1, sep2, round((sep2 - sep1) / 1e-3))
+#     x_lst_sep3 = np.linspace(sep2, sep3, round((sep3 - sep2) / 1e-3))
+#     x_lst_sep4 = np.linspace(sep3, 1, round((1 - sep3) / 1e-3))
+#
+#     x = x_lst_sep1.copy()
+#     y_lst_sep1 = 1 / 4 * ((np.pi - np.pi * (t - x + a)) * np.cos(t - x + a) - 1 / 2 * np.sin(t - x + a) -
+#                             (np.pi - np.pi * (-t - x + a)) * np.cos(-t - x + a) + 1 / 2 * np.sin(-t - x + a) +
+#                             (np.pi - np.pi * (-t + x + a)) * np.cos(-t + x + a) - 1 / 2 * np.sin(-t + x + a) -
+#                             (np.pi - np.pi * (t + x + a)) * np.cos(t + x + a) + 1 / 2 * np.sin(t + x + a))
+#
+#     x = x_lst_sep2.copy()
+#     y_lst_sep2 = 1 / 4 * ((np.pi - np.pi * (t - x + a)) * np.cos(t - x + a) - 1 / 2 * np.sin(t - x + a) +
+#                             (np.pi - np.pi * (t + x - a)) * np.cos(t + x - a) - 1 / 2 * np.sin(t + x - a) +
+#                             (np.pi - np.pi * (-t + x + a)) * np.cos(-t + x + a) - 1 / 2 * np.sin(-t + x + a) -
+#                             (np.pi - np.pi * (t + x + a)) * np.cos(t + x + a) + 1 / 2 * np.sin(t + x + a))
+#
+#     x = x_lst_sep3.copy()
+#     y_lst_sep3 = 1 / 4 * ((np.pi - np.pi * (t - x + a)) * np.cos(t - x + a) - 1 / 2 * np.sin(t - x + a) +
+#                             (np.pi - np.pi * (t + x - a)) * np.cos(t + x - a) - 1 / 2 * np.sin(t + x - a) +
+#                             (np.pi - np.pi * (-t + x + a)) * np.cos(-t + x + a) - 1 / 2 * np.sin(-t + x + a) -
+#                             (np.pi - np.pi * (t + x + a)) * np.cos(t + x + a) + 1 / 2 * np.sin(t + x + a))
+#
+#     x = x_lst_sep4.copy()
+#     y_lst_sep4 = 1 / 4 * ((np.pi - np.pi * (t - x + a)) * np.cos(t - x + a) - 1 / 2 * np.sin(t - x + a) +
+#                             (np.pi - np.pi * (t + x - a)) * np.cos(t + x - a) - 1 / 2 * np.sin(t + x - a) +
+#                             (np.pi - np.pi * (-t + x + a)) * np.cos(-t + x + a) - 1 / 2 * np.sin(-t + x + a) -
+#                             (np.pi - np.pi * (t + x + a - 2)) * np.cos(t + x + a - 2) + 1 / 2 * np.sin(t + x + a - 2))
+#
+#     x_lst = list(x_lst_sep1) + list(x_lst_sep2) + list(x_lst_sep3) + list(x_lst_sep4)
+#     y_lst = list(y_lst_sep1) + list(y_lst_sep2) + list(y_lst_sep3) + list(y_lst_sep4)
+#
+#     return x_lst, y_lst
+
+
 def plot_rude_way():
     a = 0.7
     t = 0.1
@@ -257,11 +365,37 @@ def mode_decomposition_energy():
     pass
 
 
+def plot_fit_an_fem_velocity():
+
+    x_lst, y_lst = plot_analytics_velocity()
+    y_lst = np.array(y_lst)
+    plt.figure(1)
+    plt.plot(x_lst, y_lst, '--k', label='analytics', linewidth=2)
+
+    # x_lst_2, y_lst_2 = plot_rude_way()
+    # y_lst_2 = -np.array(y_lst_2)
+    # plt.figure(1)
+    # plt.plot(x_lst_2, y_lst_2, '--g', label='rude')
+
+
+    plt.legend()
+    plt.xlabel('Time')
+    # plt.ylabel('Functional')
+    plt.ylabel('Displacement')
+    plt.title('Comparison of beam end displacements')
+    plt.grid()
+
+    plt.show()
+
+
 
 if __name__ == '__main__':
     # plot_fit_an_fem()
     # plot_rude_way_test()
 
     # mode_decomposition_form()
+
     # plot_fit_an_fem_2()
-    plot_fit_an_fem_3()
+    # plot_fit_an_fem_3()
+
+    plot_fit_an_fem_velocity()
