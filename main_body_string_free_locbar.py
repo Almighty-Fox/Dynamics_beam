@@ -114,7 +114,7 @@ def main_body_fun(loc_bar=0.9):
 
     # Пример использования
     L, q, x = 1, 1.04, 0.001
-    loc_bar = 0.7
+    loc_bar = 0.5
     dict_elements, smallest_index = generate_beam_elements(L, q, x, loc_bar)
     print("Элементы и их длины:", dict_elements)
     print("Номер наименьшего элемента:", smallest_index)
@@ -164,7 +164,13 @@ def main_body_fun(loc_bar=0.9):
     eigenvalues, eigenvectors_normalized = create_modal_matrix(global_stiffness, global_mass)  # создаем модальную матрицу для перехода в модальные координаты для расчета возбуждаемый мод
     # print((ro / E / I_inertia * np.array(eigenvalues[:10])) ** (1/4))  # вывод корней аналитического уравнения
 
-    global_damping = 0 * global_stiffness + 0 * global_mass  # глобальная МД (матрица демпфирования). Нулевое демпфирование
+    # global_damping = 0 * global_stiffness + 0 * global_mass  # глобальная МД (матрица демпфирования). Нулевое демпфирование
+    ksi_list = np.array([2.0] * (MaxNode))
+    list_diag_damping_modal = 2 * ksi_list * (eigenvalues ** 0.5)
+    global_damping_modal = np.diag(list_diag_damping_modal)
+    global_damping = np.dot(global_mass, np.dot(eigenvectors_normalized, np.dot(global_damping_modal,
+                                                                                np.dot(eigenvectors_normalized.T,
+                                                                                       global_mass))))
 
     # проверочный для МЖ (матрица жесткости) статический расчет
     # с помощью него зададим начальные координаты
@@ -232,7 +238,7 @@ def main_body_fun(loc_bar=0.9):
 
     # ------- для вычисления силы VI ----------------------
     R_barrier = 10e-3
-    k_c = 1e3 * 2 * E * (R_barrier ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
+    k_c = 1e5 * 2 * E * (R_barrier ** 0.5) / 3 / (1 - nu ** 2)  # константа в формуле силы VI
     print('k_c = {}'.format(k_c))
     # -------------------------------------------------------------------------------------
     global_force = create_global_force(global_force, f_ampl=0)  # обнуляем силу на конце балки
@@ -241,7 +247,7 @@ def main_body_fun(loc_bar=0.9):
     # начинаем цикл по времени
     t = 0
     # t_end = 0.15
-    t_end = 0.5
+    t_end = 0.7
 
     # dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
     dt_lst = [2e-6] * 3  # лист временных шагов без барьера
@@ -374,12 +380,12 @@ def main_body_fun(loc_bar=0.9):
             # --------------------------------------------------------
 
         # writing results
-        with open(r'./plots/string_break_contact/nodes_lst_k_1e4_bar_07__2.txt', 'w') as cur_file:
-            cur_file.write(str(nodes_coor))
-        with open(r'./plots/string_break_contact/dis_lst_k_1e4_bar_07__2.txt', 'w') as cur_file:
-            cur_file.write(str([dis_i[i, 0] for i in range(MaxNode)]))
-            with open(r'./plots/string_break_contact/vel_lst_k_1e4_bar_07__2.txt', 'w') as cur_file:
-                cur_file.write(str([vel_i[i, 0] for i in range(MaxNode)]))
+        # with open(r'./plots/string_break_contact/nodes_lst_k_1e4_bar_07__2.txt', 'w') as cur_file:
+        #     cur_file.write(str(nodes_coor))
+        # with open(r'./plots/string_break_contact/dis_lst_k_1e4_bar_07__2.txt', 'w') as cur_file:
+        #     cur_file.write(str([dis_i[i, 0] for i in range(MaxNode)]))
+        #     with open(r'./plots/string_break_contact/vel_lst_k_1e4_bar_07__2.txt', 'w') as cur_file:
+        #         cur_file.write(str([vel_i[i, 0] for i in range(MaxNode)]))
 
 
 
