@@ -92,7 +92,7 @@ def main_body_fun(loc_bar=0.9):
         return element_lengths, len(lengths) // 2
 
     # Пример использования
-    L, q, x = 1, 1.02, 0.0001
+    L, q, x = 1, 1.00, 0.002
     dict_elements, smallest_index = generate_beam_elements(L, q, x)
     print("Элементы и их длины:", dict_elements)
     print("Номер наименьшего элемента:", smallest_index)
@@ -160,7 +160,14 @@ def main_body_fun(loc_bar=0.9):
     # vel_i = -1e0 * np.sin(np.pi * np.linspace(0, 1, MaxNode))
     # vel_i = vel_i.reshape(-1, 1)
 
-    vel_i = -np.sin(np.pi * nodes_coor / L)
+    # vel_i = -np.sin(np.pi * nodes_coor / L)
+    vel_i = np.zeros_like(nodes_coor)
+    loc_loc = 0.7
+    vel_i[nodes_coor < loc_loc - 0.5] = 0.0  # На первом участке x < L/3, скорость равна 1.0
+    vel_i[(nodes_coor >= loc_loc - 0.5) & (nodes_coor < loc_loc)] = -1.0  # На втором участке L/3 <= x < 2L/3, скорость равна -1.0
+    vel_i[(nodes_coor >= loc_loc) & (nodes_coor < 1.5 - loc_loc)] = 1.0  # На втором участке L/3 <= x < 2L/3, скорость равна -1.0
+    vel_i[nodes_coor >= 1.5 - loc_loc] = 0.0  # На третьем участке x >= 2L/3, скорость равна 0.5
+
     vel_i = vel_i.reshape(-1, 1)
 
     # считаем начальный вектор ускорений
@@ -177,7 +184,7 @@ def main_body_fun(loc_bar=0.9):
     time_force = [global_force[point_bar, 0]]  # запоминаем з-ть VI силы
     time_lst = [0]  # массив времени
 
-    step_plot = 400  # каждый 200ый шаг выводим графики
+    step_plot = 10  # каждый 200ый шаг выводим графики
     number_mode_plot = 10  # количество мод, которое выводим на графиках
     en_func = []  # лист функционала энергии
     en_func_2 = []  # лист второго функционала энергии
@@ -219,10 +226,10 @@ def main_body_fun(loc_bar=0.9):
     # начинаем цикл по времени
     t = 0
     # t_end = 0.15
-    t_end = 0.5
+    t_end = 10.5
 
     # dt_lst = [2e-8, 1e-7, 1e-6]  # лист временных шагов, которые будем динамически менять
-    dt_lst = [1e-3] * 3  # лист временных шагов без барьера
+    dt_lst = [1e-4] * 3  # лист временных шагов без барьера
     # Начинаем с самого большого шага. Если этим большим шагом зашли вовнутрь барьера, то откываемся на шаг цикла назад и меняем временной шаг на следующий в листе.
     # Так делаем до тех пор, пока шаг не станет самым маленьким из списка. Потом считаем на этом шаге, но как только балка выйдет из барьера, каждый
     # следующий шаг делаем на один больше из списка.
@@ -231,7 +238,7 @@ def main_body_fun(loc_bar=0.9):
     MCK_lst = [(global_mass + gamma * dt_cur * global_damping + beta * dt_cur ** 2 * global_stiffness) for dt_cur in dt_lst]
 
     MCK_inv_lst = [(np.linalg.inv(MCK_cur)) for MCK_cur in MCK_lst]
-    print(MCK_inv_lst)
+    # print(MCK_inv_lst)
 
     time_step_id = len(MCK_inv_lst) - 1  # индекс вревенного шага в листе, который используем в данный момент
 
@@ -296,11 +303,15 @@ def main_body_fun(loc_bar=0.9):
 
             if is_plot:
                 axs[0][0].set_title('Beam shape')
+                axs[0][0].set_ylim(-0.3, 0.3)
                 axs[1][0].set_title('Black - Beam end coordinate,\nGreen - Point opposite the barrier.', fontsize=7, pad=0)
                 axs[2][0].set_title('VI force, max ' + str('%.2f' % max(time_force)))
+                axs[0][1].set_title('Beam velocity')
+                axs[0][1].set_ylim(-1.5, 1.5)
                 axs[0][0].grid()
                 axs[1][0].grid()
                 axs[2][0].grid()
+                axs[0][1].grid()
                 # fig.suptitle('Time = ' + str('%.2f' % t)
                 #              + ' s = ' + str('%.2f' % (t * 1e3)) + ' ms = ' + str('%.2f' % (t * 1e6)) + ' µs')
                 fig.suptitle('Real Time = ' + str('%.2f' % t)
@@ -319,6 +330,8 @@ def main_body_fun(loc_bar=0.9):
                 axs[1][0].plot(time_lst, time_disp_end, color='k', linewidth=1)  # временная з-ть конца балки
 
                 axs[2][0].plot(time_lst, time_force, 'k', linewidth=1)  # временная з-ть силы VI
+                axs[0][1].plot(nodes_coor, [vel_i[i, 0] for i in range(MaxNode)], 'r',
+                            linewidth=1)  # velocity
 
             # ----------------- ENERGY -------------------
             dis_i_transp = [disp for sublist in dis_i for disp in sublist]
@@ -339,6 +352,7 @@ def main_body_fun(loc_bar=0.9):
                 axs[0][0].clear()
                 axs[1][0].clear()
                 axs[2][0].clear()
+                axs[0][1].clear()
 
 
 
@@ -352,10 +366,10 @@ def main_body_fun(loc_bar=0.9):
             # --------------------------------------------------------
 
         # writing results
-        with open(r'./plots/VI_force_string_FEM_time_1e3.txt', 'w') as cur_file:
-            cur_file.write(str(time_lst))
-        with open(r'./plots/VI_force_string_FEM_values_1e3.txt', 'w') as cur_file:
-            cur_file.write(str(time_force))
+        # with open(r'./plots/VI_force_string_FEM_time_1e3.txt', 'w') as cur_file:
+        #     cur_file.write(str(time_lst))
+        # with open(r'./plots/VI_force_string_FEM_values_1e3.txt', 'w') as cur_file:
+        #     cur_file.write(str(time_force))
 
 
 

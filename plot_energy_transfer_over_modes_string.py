@@ -34,8 +34,25 @@ else:
 print("\nChoose the position of the barrier 'a' from the values above (between 0 and 1).")
 a = float(input("Enter the value of 'a': "))
 
+# если поле скорости не в ту сторону, то меняем на противоположное
+# поле перемещений в начальный момент точно нулевое в точке барера
+if alpha_m0 * m0 * np.sin(pi * m0 * a) > 0:
+    alpha_m0 = -alpha_m0
+
+t_lst = np.linspace(0, 0.51, 10000)
+F_lst = (-alpha_m0 * m0 * np.cos(pi * m0 * t_lst) * np.sin(pi * m0 * a) +
+         beta_n0 * n0 * np.sin(pi * n0 * t_lst) * np.sin(pi * n0 * a))
+plt.figure()
+plt.plot(t_lst, F_lst)
+plt.grid()
+# plt.show()
+
+index_detachment = np.argmax(F_lst < 0)
+t = t_lst[index_detachment]
+print(f'Time of detachment = {t}')
 # Time of detachment
-t = 0.5
+# t = 0.5
+
 
 # Prepare x values
 x_vals = np.linspace(0, 1, Nx)
@@ -44,15 +61,33 @@ x_vals = np.linspace(0, 1, Nx)
 y_vals = np.zeros_like(x_vals)
 v_vals = np.zeros_like(x_vals)
 
-# Compute y1
+# Compute initial dis and vel
 y1 = np.zeros_like(x_vals)
 v1 = np.zeros_like(x_vals)
+y1_init = np.zeros_like(x_vals)
+v1_init = np.zeros_like(x_vals)
 if beta_n0 != 0:
     y1 += beta_n0 * np.sin(pi * n0 * x_vals) * np.cos(pi * n0 * t)
+    y1_init += beta_n0 * np.sin(pi * n0 * x_vals)
     v1 += -beta_n0 * np.sin(pi * n0 * x_vals) * np.pi * n0 * np.sin(pi * n0 * t)
 if alpha_m0 != 0:
     y1 += alpha_m0 * np.sin(pi * m0 * x_vals) * np.sin(pi * m0 * t)
     v1 += alpha_m0 * np.sin(pi * m0 * x_vals) * np.pi * m0 * np.cos(pi * m0 * t)
+    v1_init += alpha_m0 * np.sin(pi * m0 * x_vals) * np.pi * m0
+
+
+plt.figure()
+plt.title('Initial Displacement')
+plt.plot(x_vals, y1_init)
+plt.grid()
+
+plt.figure()
+plt.title('Initial Velocity')
+plt.plot(x_vals, v1_init)
+plt.grid()
+
+plt.show()
+
 
 # Compute y2
 y2 = np.zeros_like(x_vals)
@@ -140,35 +175,36 @@ def mode_decomposition_energy():
     full_en_mode = 1 / 2 * eigenvalues * modal_coords ** 2 + 1 / 2 * modal_velocities ** 2
 
     # Визуализация распределения энергии по модам
-    modes_plot = 20
+    modes_plot = 40
     modes = np.arange(1, modes_plot + 1)
     plt.figure(figsize=(7, 4))
     plt.bar(modes, full_en_mode[:modes_plot], tick_label=[f'{i}' for i in modes])
     #     plt.bar(modes, full_en_mode[:modes_plot])
     plt.xlabel('Mode Number')
     plt.ylabel('Energy')
-    plt.title('Energy Distribution by Mode')
+    plt.title(f'Dis mode = {round(n0)}, Vel mode = {round(m0)}, a = {a}')
     # plt.show()
 
 mode_decomposition_energy()
 
 
 # Plot the result
-plt.figure(figsize=(10, 6))
-plt.plot(x_vals, -y_vals, label='y(x, t=0.5)')
-plt.title('Displacement Field y(x, t=0.5)')
+plt.figure(figsize=(7, 4))
+plt.plot(x_vals, y_vals, label='y(x, t=0.5)')
+plt.title(f'Displacement, Dis mode = {round(n0)}, Vel mode = {round(m0)}, a = {a}')
+plt.ylim(-1, 1)
 plt.xlabel('x')
-plt.ylabel('y(x, t)')
+plt.ylabel('Displacement')
 plt.grid(True)
-plt.legend()
+# plt.legend()
 
 
-plt.figure(figsize=(10, 6))
-plt.plot(x_vals, -v_vals, label='v(x, t=0.5)')
-plt.title('Velocity Field y(x, t=0.5)')
+plt.figure(figsize=(7, 4))
+plt.plot(x_vals, v_vals, label='v(x, t=0.5)')
+plt.title(f'Velocity, Dis mode = {round(n0)}, Vel mode = {round(m0)}, a = {a}')
 plt.xlabel('x')
-plt.ylabel('v(x, t)')
+plt.ylabel('Velocity')
 plt.grid(True)
-plt.legend()
+# plt.legend()
 
 plt.show()

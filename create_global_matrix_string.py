@@ -53,8 +53,8 @@ def create_VI_force(point_bar, global_force, dis_i_bar, k_c):
     if plus_slag <= 0:
         plus_slag = 0
 
-    VI_force = k_c * plus_slag ** (3 / 2)
-    # VI_force = 0
+    # VI_force = k_c * plus_slag ** (3 / 2)
+    VI_force = 0
     # VI_force = 1e4 * plus_slag
 
     # print('vel_i_before = {}'.format(vel_i_before))
