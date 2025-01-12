@@ -92,7 +92,7 @@ def main_body_fun(loc_bar=0.9):
         return element_lengths, len(lengths) // 2
 
     # Пример использования
-    L, q, x = 1, 1.00, 0.002
+    L, q, x = 1, 1.01, 0.001
     dict_elements, smallest_index = generate_beam_elements(L, q, x)
     print("Элементы и их длины:", dict_elements)
     print("Номер наименьшего элемента:", smallest_index)
@@ -153,7 +153,9 @@ def main_body_fun(loc_bar=0.9):
     print(np.concatenate(start_def).ravel().tolist())
 
     # Начало метода Ньюмарка
-    dis_i = np.zeros((MaxNode, 1))  # начальный вектор координат
+    # dis_i = np.zeros((MaxNode, 1))  # начальный вектор координат
+    dis_i = np.sin(np.pi * nodes_coor / L) + np.sin(3 * np.pi * nodes_coor / L)
+    dis_i = dis_i.reshape(-1, 1)
     # dis_i = start_def.copy()  # начальный вектор координат
 
     # vel_i = np.zeros((MaxNode, 1))  # начальный вектор скоростей
@@ -162,11 +164,11 @@ def main_body_fun(loc_bar=0.9):
 
     # vel_i = -np.sin(np.pi * nodes_coor / L)
     vel_i = np.zeros_like(nodes_coor)
-    loc_loc = 0.7
-    vel_i[nodes_coor < loc_loc - 0.5] = 0.0  # На первом участке x < L/3, скорость равна 1.0
-    vel_i[(nodes_coor >= loc_loc - 0.5) & (nodes_coor < loc_loc)] = -1.0  # На втором участке L/3 <= x < 2L/3, скорость равна -1.0
-    vel_i[(nodes_coor >= loc_loc) & (nodes_coor < 1.5 - loc_loc)] = 1.0  # На втором участке L/3 <= x < 2L/3, скорость равна -1.0
-    vel_i[nodes_coor >= 1.5 - loc_loc] = 0.0  # На третьем участке x >= 2L/3, скорость равна 0.5
+    # loc_loc = 0.7
+    # vel_i[nodes_coor < loc_loc - 0.5] = 0.0  # На первом участке x < L/3, скорость равна 1.0
+    # vel_i[(nodes_coor >= loc_loc - 0.5) & (nodes_coor < loc_loc)] = -1.0  # На втором участке L/3 <= x < 2L/3, скорость равна -1.0
+    # vel_i[(nodes_coor >= loc_loc) & (nodes_coor < 1.5 - loc_loc)] = 1.0  # На втором участке L/3 <= x < 2L/3, скорость равна -1.0
+    # vel_i[nodes_coor >= 1.5 - loc_loc] = 0.0  # На третьем участке x >= 2L/3, скорость равна 0.5
 
     vel_i = vel_i.reshape(-1, 1)
 
@@ -184,7 +186,7 @@ def main_body_fun(loc_bar=0.9):
     time_force = [global_force[point_bar, 0]]  # запоминаем з-ть VI силы
     time_lst = [0]  # массив времени
 
-    step_plot = 10  # каждый 200ый шаг выводим графики
+    step_plot = 100  # каждый 200ый шаг выводим графики
     number_mode_plot = 10  # количество мод, которое выводим на графиках
     en_func = []  # лист функционала энергии
     en_func_2 = []  # лист второго функционала энергии
@@ -320,7 +322,7 @@ def main_body_fun(loc_bar=0.9):
                             linewidth=1)  # Положение балки
                 # axs[0][0].plot([L * (point_bar) / (MaxNode - 1)], [dis_i1[point_bar, 0]], 'go', markersize=4)  # Жирная точка середина балки
                 axs[0][0].plot([L], [dis_i1[-1, 0]], 'ko', markersize=4)  # Жирная точка конца балки
-                # axs[0][0].plot([L * point_bar / (MaxNode - 1)], [0], 'b^', markersize=7)  # Местоположение барьера
+                axs[0][0].plot([L * point_bar / (MaxNode - 1)], [0], 'b^', markersize=7)  # Местоположение барьера
                 axs[0][0].plot([L / 2], [0], 'b^', markersize=7)  # Местоположение барьера
                 # scale = max(abs(min(time_disp_end)), abs(max(time_disp_end)), delta * 2)  # Масштаб графика формы балки
                 scale = start_def[-1][0]  # Масштаб графика формы балки

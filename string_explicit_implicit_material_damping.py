@@ -92,43 +92,43 @@ x_vals, y_vals, v_vals, n0_, m0_, a_ = disp_and_vel_after_VI(Nx)
 # # -------------------------------------------------------------------
 
 
-# energy
-def mode_decomposition_energy():
-    # Число мод
-    num_modes = 300
-
-    # Функция для вычисления коэффициентов модального разложения
-    def modal_coefficients(x, y, num_modes):
-        coefficients = []
-        for k in range(1, num_modes + 1):
-            phi_k = np.sin(k * np.pi * x)
-            a_k = 2 * np.trapz(y * phi_k, x=x)
-            coefficients.append(a_k)
-
-        return np.array(coefficients)
-
-    xx = x_vals.copy()
-    y = y_vals
-    v = v_vals
-    modal_coords = modal_coefficients(xx, y, num_modes)
-    modal_velocities = modal_coefficients(xx, v, num_modes)
-
-    eigenvalues = np.array([(k * np.pi) ** 2 for k in range(1, num_modes + 1)])
-
-    #     full_en_mode = 1 / 2 * modal_coords ** 2 + 1 / 2 * eigenvalues * modal_velocities ** 2
-    full_en_mode = 1 / 2 * eigenvalues * modal_coords ** 2 + 1 / 2 * modal_velocities ** 2
-
-    # Визуализация распределения энергии по модам
-    modes_plot = 20
-    modes = np.arange(1, modes_plot + 1)
-    plt.figure(figsize=(7, 4))
-    plt.bar(modes, full_en_mode[:modes_plot], tick_label=[f'{i}' for i in modes])
-    #     plt.bar(modes, full_en_mode[:modes_plot])
-    plt.xlabel('Mode Number')
-    plt.ylabel('Energy')
-    # plt.show()
-
-mode_decomposition_energy()
+# # energy
+# def mode_decomposition_energy():
+#     # Число мод
+#     num_modes = 300
+#
+#     # Функция для вычисления коэффициентов модального разложения
+#     def modal_coefficients(x, y, num_modes):
+#         coefficients = []
+#         for k in range(1, num_modes + 1):
+#             phi_k = np.sin(k * np.pi * x)
+#             a_k = 2 * np.trapz(y * phi_k, x=x)
+#             coefficients.append(a_k)
+#
+#         return np.array(coefficients)
+#
+#     xx = x_vals.copy()
+#     y = y_vals
+#     v = v_vals
+#     modal_coords = modal_coefficients(xx, y, num_modes)
+#     modal_velocities = modal_coefficients(xx, v, num_modes)
+#
+#     eigenvalues = np.array([(k * np.pi) ** 2 for k in range(1, num_modes + 1)])
+#
+#     #     full_en_mode = 1 / 2 * modal_coords ** 2 + 1 / 2 * eigenvalues * modal_velocities ** 2
+#     full_en_mode = 1 / 2 * eigenvalues * modal_coords ** 2 + 1 / 2 * modal_velocities ** 2
+#
+#     # Визуализация распределения энергии по модам
+#     modes_plot = 20
+#     modes = np.arange(1, modes_plot + 1)
+#     plt.figure(figsize=(7, 4))
+#     plt.bar(modes, full_en_mode[:modes_plot], tick_label=[f'{i}' for i in modes])
+#     #     plt.bar(modes, full_en_mode[:modes_plot])
+#     plt.xlabel('Mode Number')
+#     plt.ylabel('Energy')
+#     # plt.show()
+#
+# mode_decomposition_energy()
 
 
 # Plot the result
@@ -604,7 +604,7 @@ def mode_decomposition_energy(x_vals, y_vals, v_vals):
 
 # explicit_scheme(dt=1e-4, lambda_=0.0)
 # implicit_scheme(dt=1e-4, lambd=0.0)
-explicit_scheme_material_damping(dt=1e-5, gamma_=0.0, x_vals=x_vals, y_vals=y_vals, v_vals=v_vals)
+explicit_scheme_material_damping(dt=1e-5, gamma_=0.01, x_vals=x_vals, y_vals=y_vals, v_vals=v_vals)
 # mode_decomposition_energy(x_vals, y_vals, v_vals)
 
 

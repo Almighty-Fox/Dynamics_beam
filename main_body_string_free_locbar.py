@@ -181,14 +181,17 @@ def main_body_fun(loc_bar=0.9):
     print(np.concatenate(start_def).ravel().tolist())
 
     # Начало метода Ньюмарка
-    dis_i = np.zeros((MaxNode, 1))  # начальный вектор координат
+    # dis_i = np.zeros((MaxNode, 1))  # начальный вектор координат
+    dis_i = -np.sin(np.pi * nodes_coor / L) - np.sin(3 * np.pi * nodes_coor / L)
+    dis_i = dis_i.reshape(-1, 1)
     # dis_i = start_def.copy()  # начальный вектор координат
 
     # vel_i = np.zeros((MaxNode, 1))  # начальный вектор скоростей
     # vel_i = -1e0 * np.sin(np.pi * np.linspace(0, 1, MaxNode))
     # vel_i = vel_i.reshape(-1, 1)
 
-    vel_i = -np.sin(np.pi * nodes_coor / L)
+    # vel_i = -np.sin(np.pi * nodes_coor / L)
+    vel_i = np.zeros_like(nodes_coor)
     vel_i = vel_i.reshape(-1, 1)
 
     # считаем начальный вектор ускорений

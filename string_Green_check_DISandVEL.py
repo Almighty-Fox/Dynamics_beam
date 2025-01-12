@@ -54,12 +54,12 @@ def modal_coefficients(x, y, num_modes):
     return np.array(coefficients)
 
 # Параметры
-alpha_coef, beta_coef = 1, 1
-alpha_n, beta_n = 5, 0
+alpha_coef, beta_coef = 1, 0
+alpha_n, beta_n = 3, 0
 x = np.linspace(0, 1, 1000)
 t_max = 10.5
 t_fine = np.linspace(0, 0.51, 10000)  # Уточненное время для определения момента отрыва
-a = 0.3
+a = 0.5
 
 if alpha_coef * alpha_n * np.sin(np.pi * alpha_n * a) > 0:
     alpha_coef = -alpha_coef
