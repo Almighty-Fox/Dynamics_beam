@@ -6,29 +6,33 @@ import pandas as pd
 
 
 # динамика балки без барьера
-def beam_no_VI_vibrations(y_vals, v_vals, gamma_, just_no_VI=False):
+# def beam_no_VI_vibrations(y_vals, v_vals, gamma_, just_no_VI=False):
+def beam_no_VI_vibrations(alpha_lst_init, beta_lst_init, gamma_, just_no_VI=False):
     global t_global, time_is_up, t_global_lst, energy_data_global
+
+    t_local = 0
+    if_we_are_ready_for_new_VI = False
 
 
     in_barrier = False
 
     t_step_id = 0
-    dt_prev = t_step_lst[t_step_id]
     dt_next = t_step_lst[t_step_id]
 
     # Инициализация массивов решения
-    u = np.zeros(Nx)
-    u_prev = np.zeros(Nx)
-    u_next = np.zeros(Nx)
-
-    # Начальные условия
-    u[:] = y_vals.copy()
+    u_init = np.zeros(Nx)
+    for n0, beta_i in enumerate(beta_lst_init, start=1):
+        u_init += beta_i * np.sin(np.pi * n0 * x_vals)
     # Граничные условия
-    u[0] = 0
-    u[-1] = 0
+    u_init[0] = 0
+    u_init[-1] = 0
 
-    u_prev[:] = u - v_vals * dt_prev
-    v_cur = v_vals.copy()
+    v_init = np.zeros(Nx)
+    for m0, alpha_i in enumerate(alpha_lst_init, start=1):
+        v_init += (-(np.pi * m0)**2 * gamma_ / 2 * beta_lst_init[m0-1] + omega_m_damping(m0) * alpha_i) * np.sin(np.pi * m0 * x_vals)
+    # Граничные условия
+    v_init[0] = 0
+    v_init[-1] = 0
 
     energy_data = []
     flag = True
@@ -42,49 +46,32 @@ def beam_no_VI_vibrations(y_vals, v_vals, gamma_, just_no_VI=False):
     # while ((u[point_barrier] >= 0) or (first_step)) and (not time_is_up):  # ???????????????????????
     # while not True:
 
-    while (u[point_barrier] >= 0) or just_no_VI:
 
-        # dt = t_step_lst[t_step_id]
+    u_next = u_init.copy()
+    while (u_next[point_barrier] >= 0) or just_no_VI or not if_we_are_ready_for_new_VI:
+
+        if (t_global >= t_end) and not time_is_up:
+            time_is_up = True
+            # with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\time_energy_3_3.txt', 'w') as cur_file:
+            #     cur_file.write(str(t_global_lst))
+            # with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\energy_3_3.txt', 'w') as cur_file:
+            #     cur_file.write(str(energy_data_global))
+
+
         first_step = False
         t_global += dt_next
         t_global_lst.append(t_global)
+        t_local += dt_next
 
-        if t_global >= t_end:
-            time_is_up = True
+
 
 
         # Основной вычислительный цикл
-        for i in range(1, Nx - 1):
-            # Вычисление второй производной по пространству для текущего и предыдущего слоя
-            d2u_dx2_n = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx ** 2
-            d2u_dx2_prev = (u_prev[i + 1] - 2 * u_prev[i] + u_prev[i - 1]) / dx ** 2
-
-            # Явная схема для:
-            # u_{n+1}[i] = 2 u_n[i] - u_{n-1}[i]
-            #               + dt^2 * (u_xx^n[i])
-            #               + gamma_ * dt * (u_xx^n[i] - u_xx^{n-1}[i])
-            # Объединяя:
-            # u_next[i] = (2 * u[i] - u_prev[i]
-            #              + dt ** 2 * d2u_dx2_n
-            #              + gamma_ * dt * (d2u_dx2_n - d2u_dx2_prev))
-
-            # ------------------------------------------------
-            # Было:
-            # u_next[i] = (2*u[i] - u_prev[i]
-            #              + dt^2 * d2u_dx2_n
-            #              + gamma_ * dt * (d2u_dx2_n - d2u_dx2_prev))
-
-            # Нужно:
-            # u_next[i] = u[i] + (dt_{n+1}/dt_n)*(u[i] - u_prev[i]) + ...
-            #    + (dt_{n+1}(dt_{n+1}+dt_n)/2)*d2u_dx2_n
-            #    + gamma_ * dt_{n+1} * (d2u_dx2_n - d2u_dx2_prev)
-
-            u_next[i] = (u[i]
-                         + (dt_next / dt_prev) * (u[i] - u_prev[i])
-                         + 0.5 * dt_next * (dt_next + dt_prev) * d2u_dx2_n
-                         + gamma_ * dt_next * (d2u_dx2_n - d2u_dx2_prev)
-                         )
-
+        u_next = np.zeros(Nx)
+        for m0, alpha_i in enumerate(alpha_lst_init, start=1):
+            u_next += np.exp(-(np.pi * m0) ** 2 * gamma_ / 2 * t_local) * (
+                        alpha_i * np.sin(omega_m_damping(m0) * t_local) + beta_lst_init[m0 - 1] * np.cos(
+                    omega_m_damping(m0) * t_local)) * np.sin(np.pi * m0 * x_vals)
 
         # print(f'2 = {dt}')
 
@@ -92,13 +79,14 @@ def beam_no_VI_vibrations(y_vals, v_vals, gamma_, just_no_VI=False):
         u_next[0] = 0
         u_next[-1] = 0
 
-        if not just_no_VI:
+        if not just_no_VI and if_we_are_ready_for_new_VI:
             # если зашли в барьер, откатываем шаг назад и уменьшаем шаг на меньший из листа шагов
             if (t_step_id > 0) and (u_next[point_barrier] < 0):
                 in_barrier = True
                 print('In barrier')
                 t_global -= dt_next
                 t_global_lst.pop()
+                t_local -= dt_next
 
                 t_step_id -= 1
                 dt_next = t_step_lst[t_step_id]
@@ -107,46 +95,77 @@ def beam_no_VI_vibrations(y_vals, v_vals, gamma_, just_no_VI=False):
 
         # print(f'PREV = {dt_prev}')
         # print(f'NEXT = {dt_next}')
-        v_cur = (u_next - u) / dt_next
+        v_next = np.zeros(Nx)
+        v_next_t_lst = []
+        u_next_t_lst = []
+        for m0, alpha_i in enumerate(alpha_lst_init, start=1):
+            v_next_t = (np.exp(-(np.pi * m0) ** 2 * gamma_ / 2 * t_local) * (-(np.pi * m0) ** 2 * gamma_ / 2 * (
+                    alpha_i * np.sin(omega_m_damping(m0) * t_local) + beta_lst_init[m0 - 1] * np.cos(
+                omega_m_damping(m0) * t_local)) + omega_m_damping(m0) * (alpha_i * np.cos(
+                omega_m_damping(m0) * t_local) - beta_lst_init[m0 - 1] * np.sin(
+                omega_m_damping(m0) * t_local))))
+            v_next_t_lst.append(v_next_t)
+            v_next += v_next_t * np.sin(np.pi * m0 * x_vals)
 
-        cur_energy = total_energy(u_next, v_cur)
+
+            u_next_t = np.exp(-(np.pi * m0) ** 2 * gamma_ / 2 * t_local) * (
+                    alpha_i * np.sin(omega_m_damping(m0) * t_local) + beta_lst_init[m0 - 1] * np.cos(
+                omega_m_damping(m0) * t_local))
+            u_next_t_lst.append(u_next_t)
+
+
+        # cur_energy = total_energy(u_next, v_cur)
+        kinetic_energy = 0.25 * sum([v_next_t_lst[ii]**2 for ii in range(len(v_next_t_lst))])
+        potential_energy = 0.25 * sum([(np.pi * (ii+1) * u_next_t_lst[ii]) ** 2 for ii in range(len(u_next_t_lst))])
+        cur_energy = kinetic_energy + potential_energy
+        # print(cur_energy)
         energy_data_global.append(cur_energy)
+        # # print(cur_energy)
+        # energy_over_modes_lst = energy_over_modes(u_next, v_cur, case_damping=True)
+        energy_over_modes_lst = 0.25 * (np.array([v_next_t_lst[ii] ** 2 for ii in range(len(v_next_t_lst))]) + np.array(
+            [(np.pi * (ii + 1) * u_next_t_lst[ii]) ** 2 for ii in range(len(u_next_t_lst))]))
+        graph(u_next, v_next, energy_over_modes_lst[:num_modes_plot_energy], case_plot=True)
         # print(cur_energy)
-        energy_over_modes_lst = energy_over_modes(u_next, v_cur, case_damping=True)
-        graph(u, v_cur, energy_over_modes_lst, case=True)
-        # print(cur_energy)
 
-
-
-        # Обновляем слои
-        u_prev[:] = u[:]
-        u[:] = u_next[:]
 
         # ------------------------------------------------------
 
-
-
         # если выходим из барьера увеличиваем шаги
-        if (not in_barrier) and (t_step_id < len(t_step_lst)-1) and (u_next[point_barrier] > 0):
+        # print((u_next[point_barrier]))
+        if (not in_barrier) and (t_step_id < len(t_step_lst)-1):
             t_step_id += 1
             print('Out of barrier')
             print(f't_step_id = {t_step_id}')
 
-        dt_prev = dt_next
         dt_next = t_step_lst[t_step_id]
 
         # print(f'1 = {u[point_barrier]}')
 
-
-
-
-
-
+        # если выруливаем из случайного минуса после ВИ, то мы открыты к новому удару
+        if u_next[point_barrier] > 1e-4:
+            if_we_are_ready_for_new_VI = True
 
 
     # ПЕРЕКЛЮЧАЕМ НА БАЛКУ С БАРЬЕРОМ
+    beta_lst_end = np.zeros(num_modes)
+    for m0, alpha_i in enumerate(alpha_lst_init, start=1):
+        beta_lst_end[m0-1] = np.exp(-(np.pi * m0) ** 2 * gamma_ / 2 * t_local) * (
+                alpha_i * np.sin(omega_m_damping(m0) * t_local) + beta_lst_init[m0 - 1] * np.cos(
+            omega_m_damping(m0) * t_local))
 
-    return u, v_cur
+    alpha_lst_end = np.zeros(num_modes)
+    for m0, alpha_i in enumerate(alpha_lst_init, start=1):
+        alpha_lst_end[m0-1] = (np.exp(-(np.pi * m0) ** 2 * gamma_ / 2 * t_local) * (-(np.pi * m0) ** 2 * gamma_ / 2 * (
+                alpha_i * np.sin(omega_m_damping(m0) * t_local) + beta_lst_init[m0 - 1] * np.cos(
+            omega_m_damping(m0) * t_local)) + omega_m_damping(m0) * (alpha_i * np.cos(
+            omega_m_damping(m0) * t_local) - beta_lst_init[m0 - 1] * np.sin(
+            omega_m_damping(m0) * t_local))))
+
+
+    print('Before VI')
+    graph(u_next, v_next, energy_over_modes_lst[:num_modes_plot_energy], case_plot=False, case_time_delay=False)
+
+    return alpha_lst_end, beta_lst_end
 
 
 def modal_coefficients(x, y, num_modes):
@@ -220,9 +239,11 @@ def VI_force(alpha_coef_lst, beta_coef_lst, t_lst):
 def VI_force_accuracy(alpha_coef_lst, beta_coef_lst):
     t_lst_big = np.linspace(0.0001, 0.51, 100)
     t_about = VI_force(alpha_coef_lst, beta_coef_lst, t_lst_big)
+    print(f't_about = {t_about}')
 
-    t_lst_right = np.linspace(0.0, t_about * 1.2, 1000)
+    t_lst_right = np.linspace(0.0, t_about * 1.2, 10000)
     t_f_zero = VI_force(alpha_coef_lst, beta_coef_lst, t_lst_right)
+    print(f't_f_zero = {t_f_zero}')
 
     return t_f_zero
 
@@ -251,9 +272,12 @@ def beam_with_VI_vibrations(alpha_coef_lst, beta_coef_lst):
     print('with barrier')
 
     is_first_no_VI = True
-    global t_global, time_is_up, t_global_lst, energy_data_global
+    global t_global, t_global_lst, energy_data_global, number_VI, time_start_VI, time_end_VI, energy_during_VI
+    number_VI += 1
+    time_start_VI.append(t_global)
+    time_end_VI.append(t_global + detachment_time)
+    energy_during_VI.append(energy_data_global[-1])
 
-    y_list = disp_start
 
     first_step = True
     # while ((Q_t < 0) and (not time_is_up)): # or first_step:  # ???????????????????????
@@ -277,15 +301,13 @@ def beam_with_VI_vibrations(alpha_coef_lst, beta_coef_lst):
 
     t = detachment_time
 
-    t_lst = np.linspace(0, detachment_time, 10)
+    t_lst = np.linspace(0, detachment_time, 4)
     t_lst_step = t_lst[1]
     for t in t_lst[1:]:
 
         t_global += t_lst_step
         t_global_lst.append(t_global)
 
-        if t_global >= t_end:
-            time_is_up = True
 
         # Compute initial dis and vel
         # Compute y1, v1 (without VI influence)
@@ -306,6 +328,7 @@ def beam_with_VI_vibrations(alpha_coef_lst, beta_coef_lst):
 
                 v1 += alpha_m0 * np.sin(pi * m0 * x_vals) * np.pi * m0 * np.cos(pi * m0 * t)
                 v1_init += alpha_m0 * np.sin(pi * m0 * x_vals) * np.pi * m0
+
 
 
 
@@ -395,7 +418,16 @@ def beam_with_VI_vibrations(alpha_coef_lst, beta_coef_lst):
         print(f'cur_energy={cur_energy}')
         energy_data_global.append(cur_energy)
         energy_over_modes_lst = energy_over_modes(y_vals, v_vals, case_damping=False)
-        graph(y_vals, v_vals, energy_over_modes_lst, case=False, if_contact=True)
+        graph(y_vals, v_vals, energy_over_modes_lst, case_plot=False, if_contact=True, case_time_delay=False)
+
+    # plt.figure()
+    # plt.plot(x_vals, y1_init)
+    # plt.grid()
+    # plt.figure()
+    # plt.plot(x_vals, v1_init)
+    # plt.grid()
+
+
 
     # plt.figure()
     # plt.plot(x_vals, y_vals)
@@ -472,27 +504,34 @@ def beam_with_VI_vibrations(alpha_coef_lst, beta_coef_lst):
     # beam_no_VI_vibrations(y_list, vel_list)
 
 
-    print(y_vals[point_barrier])
+    # print(y_vals[point_barrier])
 
-    graph(y_vals, v_vals, energy_over_modes_lst, case=False, case_2=False, if_contact=True)
+    graph(y_vals, v_vals, energy_over_modes_lst, case_plot=False, case_time_delay=False, if_contact=True)
 
     return y_vals, v_vals
 
 
 # Задачем начальные условия
 def initial_conditions():
-    disp_start = 0 * np.sin(3 * np.pi * x_vals)
-    vel_start = -np.sin(np.pi * x_vals) - np.sin(5 * np.pi * x_vals)
+    # disp_start = 0 * np.sin(3 * np.pi * x_vals)
+    # vel_start = -np.sin(np.pi * x_vals) - np.sin(5 * np.pi * x_vals)
+    alpha_coef_lst = np.zeros(num_modes)
+    alpha_coef_lst[1-1] = 1
+    alpha_coef_lst[3 - 1] = -1
+    # alpha_coef_lst[5 - 1] = -1
+    # alpha_coef_lst[7 - 1] = 1
+    # alpha_coef_lst[9 - 1] = 1
+    beta_coef_lst = np.zeros(num_modes)
 
-    return disp_start, vel_start, max(disp_start)
+    return alpha_coef_lst, beta_coef_lst
 
 
-def graph(y_list, vel_list, energy_over_modes_lst, case, case_2=True, if_contact=False):
+def graph(y_list, vel_list, energy_over_modes_lst, case_plot, case_time_delay=True, if_contact=False):
     # pass
     # if len(t_global_lst) % 200 == 0:
     # if round(t_global * 1e5) % 10 == 0:
-    if case:
-        statement = len(t_global_lst) % 100 == 0
+    if case_plot:
+        statement = len(t_global_lst) % 20 == 0
     else:
         statement = True
 
@@ -500,12 +539,13 @@ def graph(y_list, vel_list, energy_over_modes_lst, case, case_2=True, if_contact
         # print(total_energy)
         # print(sum(total_energy))
 
-        fig.suptitle('Time=' + str('%.2f' % t_global) + 's=' + str('%.2f' % (t_global * 1e3)) + 'ms\n' + 'Contact ' + str(if_contact))
+        fig.suptitle('Time=' + str('%.2f' % t_global) + 's=' + str('%.2f' % (t_global * 1e3)) + 'ms\n' + 'Contact ' + str(if_contact) + '. Number of VI = ' + str(number_VI))
 
         axs[0][0].set_title('Beam shape')
         axs[0][0].plot(x_vals, y_list, 'k', linewidth=1)
         axs[0][0].grid()
         # axs[0][0].set_ylim(-max_disp_start*1.0, max_disp_start*1.0)
+
 
         axs[0][1].set_title('Beam vel')
         # axs[2][1].plot(np.linspace(0, l2, point), vel_list, 'k', linewidth=1)
@@ -517,6 +557,13 @@ def graph(y_list, vel_list, energy_over_modes_lst, case, case_2=True, if_contact
         axs[1][0].plot(t_global_lst, energy_data_global, 'g', linewidth=1)
         axs[1][0].set_ylim(0, energy_data_global[0] * 1.2)
         axs[1][0].grid()
+        # вспомогательные линии начала и конца ВИ
+        if case_plot:
+            for ii in range(len(time_start_VI)):
+                axs[1][0].plot([time_start_VI[ii], time_start_VI[ii]],
+                               [energy_during_VI[ii] - 0.1, energy_during_VI[ii] + 0.1], 'k--', linewidth=1)
+                axs[1][0].plot([time_end_VI[ii], time_end_VI[ii]],
+                               [energy_during_VI[ii] - 0.1, energy_during_VI[ii] + 0.1], 'k--', linewidth=1)
 
         df = pd.DataFrame(energy_over_modes_lst, columns=['origin'], index=range(1, num_modes_plot_energy + 1))
         axs[1][1].set_title('Energy distribution over modes\nMax energy = {} %'.format(
@@ -524,7 +571,7 @@ def graph(y_list, vel_list, energy_over_modes_lst, case, case_2=True, if_contact
         axs[1][1].bar(np.arange(1, num_modes_plot_energy + 1), df.origin[:])
         axs[1][1].set_xticks(np.arange(1, num_modes_plot_energy))
 
-        if case_2:
+        if case_time_delay:
             plt.pause(0.01)
         else:
             plt.pause(2)
@@ -532,19 +579,18 @@ def graph(y_list, vel_list, energy_over_modes_lst, case, case_2=True, if_contact
         axs[1][0].clear()
         axs[0][1].clear()
         axs[1][1].clear()
-        axs[2][0].clear()
-        axs[2][1].clear()
+
 
 
 # -----------------------------------------------
 pi = np.pi
-Nx = 1000 + 1    # Number of x points
+Nx = 2000 + 1    # Number of x points
 x_vals = np.linspace(0, 1, Nx)
-a_bar = 0.5
+a_bar = 0.45
 point_barrier = round((Nx - 1) * a_bar)
-N_max = 1000  # number terms in sum
+N_max = 2000  # number terms in sum
 num_modes = 100
-gamma_ = 0.00001
+gamma_ = 0.004
 
 L = 1
 # Параметры задачи
@@ -555,6 +601,10 @@ dx = L / (Nx - 1)
 t_global = 0.0
 t_global_lst = []
 energy_data_global = []
+number_VI = 0
+time_start_VI = []
+time_end_VI = []
+energy_during_VI = []
 # -----------------------------------------------
 num_modes_plot_energy = 20
 omega_m_damping = lambda m: (np.pi * m) * np.sqrt(1 - ((np.pi * m) ** 2 * gamma_ ** 2) / 4)
@@ -611,8 +661,8 @@ def create_time_steps(dt_smallest, dt_biggest, relative_difference_max):
 
 # Пример использования
 dt_smallest = 1e-15
-dt_biggest = 2e-5
-relative_difference_max = 0.5  # Относительная разница не больше 20%
+dt_biggest = 8e-4
+relative_difference_max = 0.3  # Относительная разница не больше 20%
 
 t_step_lst = create_time_steps(dt_smallest, dt_biggest, relative_difference_max)
 print(t_step_lst)
@@ -621,42 +671,44 @@ print(t_step_lst)
 t_step_id = 0
 t_step = t_step_lst[t_step_id]
 
-t_end = 0.55
+t_end = 4.00
 time_is_up = False  # флаг на то, закончилось ли время
 # ---------------------------------------------
 
 print('Начинаем фигачить')
 
 # Задаем начальную деформацию и скорость балки
-[disp_start, vel_start, max_disp_start] = initial_conditions()
+[alpha_coef_lst_start, beta_coef_lst_start] = initial_conditions()
 print('Задали НУ')
 
 print('Запускаем динамику')
 
-fig, axs = plt.subplots(3, 2, figsize=(12, 10), squeeze=False)  # создаем саб плот из 2 графиков
+fig, axs = plt.subplots(2, 2, figsize=(12, 7), squeeze=False)  # создаем саб плот из 2 графиков
 # plt.subplots_adjust(wspace=0.4, hspace=0.7)
 plt.subplots_adjust(wspace=0.1, hspace=0.2)
 plt.pause(0.1)
 
-while True:
+# while True:
 # while not time_is_up:
-#     print('Time = ', str(t_global))
-#     # Вначале запускаем динамику балки без барьера
-#     [disp_start, vel_start] = beam_no_VI_vibrations(disp_start, vel_start, gamma_)
+# ---------------------------------------------------------
+# Switch to case without VI
+beta_coef_lst, alpha_coef_lst_draft = beta_coef_lst_start.copy(), alpha_coef_lst_start.copy()
+alpha_coef_lst = ((alpha_coef_lst_draft + (np.pi * np.arange(1, num_modes + 1)) ** 2 * gamma_ / 2 * beta_coef_lst) /
+                  np.array([omega_m_damping(ii+1) for ii in range(num_modes)]))
 
-    # plt.figure()
-    # plt.plot(x_vals, disp_start)
-    # plt.grid()
-    #
-    # plt.figure()
-    # plt.plot(x_vals, vel_start)
-    # plt.grid()
-    #
-    # plt.show()
-
-
-    beta_coef_lst, alpha_coef_lst_draft = disp_vel_to_alpha_beta_lst(disp_start, vel_start, num_modes)
-    alpha_coef_lst = alpha_coef_lst_draft / np.arange(1, len(alpha_coef_lst_draft) + 1) / np.pi
+print('Time = ', str(t_global))
+# Вначале запускаем динамику балки без барьера
+# [disp_start, vel_start] = beam_no_VI_vibrations(disp_start, vel_start, gamma_, just_no_VI=False)
+[alpha_lst_init, beta_lst_init] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_, just_no_VI=False)
+print(alpha_lst_init)
+print(beta_lst_init)
+# ---------------------------------------------------------
+while True:
+    # ---------------------------------------------------------
+    # Firstly we are modelling VI
+    # beta_coef_lst, alpha_coef_lst_draft = beta_coef_lst_start.copy(), alpha_coef_lst_start.copy()
+    beta_coef_lst, alpha_coef_lst_draft = beta_lst_init.copy(), alpha_lst_init.copy()
+    alpha_coef_lst = alpha_coef_lst_draft / np.arange(1, num_modes + 1) / np.pi
     print(alpha_coef_lst)
     print(beta_coef_lst)
 
@@ -666,34 +718,55 @@ while True:
     print('Time = ', str(t_global))
     [disp_start, vel_start] = beam_with_VI_vibrations(alpha_coef_lst, beta_coef_lst)
     # print(t_loc_lst)
+    print(f'log = {disp_start[point_barrier]}')
+    # ---------------------------------------------------------
 
-
-
-    print('Time = ', str(t_global))
-    # Вначале запускаем динамику балки без барьера
-    [disp_start, vel_start] = beam_no_VI_vibrations(disp_start, vel_start, gamma_, just_no_VI=False)
-
-
+    # ---------------------------------------------------------
+    # Switch to case without VI
     beta_coef_lst, alpha_coef_lst_draft = disp_vel_to_alpha_beta_lst(disp_start, vel_start, num_modes)
-    alpha_coef_lst = alpha_coef_lst_draft / np.arange(1, len(alpha_coef_lst_draft) + 1) / np.pi
-    print(alpha_coef_lst)
-    print(max(abs(alpha_coef_lst)))
-    print(beta_coef_lst)
-    print(max(abs(beta_coef_lst)))
-
-    # alpha_coef_lst = np.array([-1])
-    # beta_coef_lst = np.array([0])
-
-    print('Time = ', str(t_global))
-    [disp_start, vel_start] = beam_with_VI_vibrations(alpha_coef_lst, beta_coef_lst)
-    # print(t_loc_lst)
-
-    print(disp_start[point_barrier-5:point_barrier+5])
-    print(vel_start[point_barrier-5:point_barrier+5])
-
+    alpha_coef_lst = ((alpha_coef_lst_draft + (np.pi * np.arange(1, num_modes + 1)) ** 2 * gamma_ / 2 * beta_coef_lst) /
+                      np.array([omega_m_damping(ii+1) for ii in range(num_modes)]))
 
     print('Time = ', str(t_global))
     # Вначале запускаем динамику балки без барьера
-    [disp_start, vel_start] = beam_no_VI_vibrations(disp_start, vel_start, gamma_, just_no_VI=True)
+    # [disp_start, vel_start] = beam_no_VI_vibrations(disp_start, vel_start, gamma_, just_no_VI=False)
+    [alpha_lst_init, beta_lst_init] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_, just_no_VI=False)
+    print(alpha_lst_init)
+    print(beta_lst_init)
+    # ---------------------------------------------------------
+
+    # # ---------------------------------------------------------
+    # #  we are modelling VI
+    # beta_coef_lst, alpha_coef_lst_draft = beta_lst_init.copy(), alpha_lst_init.copy()
+    # alpha_coef_lst = alpha_coef_lst_draft / np.arange(1, num_modes + 1) / np.pi
+    # # print(alpha_coef_lst)
+    # # print(max(abs(alpha_coef_lst)))
+    # # print(beta_coef_lst)
+    # # print(max(abs(beta_coef_lst)))
+    #
+    # # alpha_coef_lst = np.array([-1])
+    # # beta_coef_lst = np.array([0])
+    #
+    # print('Time = ', str(t_global))
+    # [disp_start, vel_start] = beam_with_VI_vibrations(alpha_coef_lst, beta_coef_lst)
+    # # print(t_loc_lst)
+    #
+    # print(disp_start[point_barrier-5:point_barrier+5])
+    # print(vel_start[point_barrier-5:point_barrier+5])
+    # # ---------------------------------------------------------
+    #
+    #
+    # # ---------------------------------------------------------
+    # print('Time = ', str(t_global))
+    # # Switch to case without VI
+    # beta_coef_lst, alpha_coef_lst_draft = disp_vel_to_alpha_beta_lst(disp_start, vel_start, num_modes)
+    # alpha_coef_lst = ((alpha_coef_lst_draft + (np.pi * np.arange(1, num_modes + 1)) ** 2 * gamma_ / 2 * beta_coef_lst) /
+    #                   np.array([omega_m_damping(ii + 1) for ii in range(num_modes)]))
+    #
+    # print('Time = ', str(t_global))
+    # # Вначале запускаем динамику балки без барьера
+    # # [disp_start, vel_start] = beam_no_VI_vibrations(disp_start, vel_start, gamma_, just_no_VI=False)
+    # [alpha_lst_init, beta_lst_init] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_, just_no_VI=True)
+    # # ---------------------------------------------------------
 
 
