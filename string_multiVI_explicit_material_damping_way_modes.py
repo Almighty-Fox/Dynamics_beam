@@ -8,7 +8,7 @@ import pandas as pd
 # динамика балки без барьера
 # def beam_no_VI_vibrations(y_vals, v_vals, gamma_, just_no_VI=False):
 def beam_no_VI_vibrations(alpha_lst_init, beta_lst_init, gamma_, just_no_VI=False):
-    global t_global, time_is_up, t_global_lst, energy_data_global
+    global t_global, time_is_up, t_global_lst, energy_data_global, tau
 
     t_local = 0
     if_we_are_ready_for_new_VI = False
@@ -46,16 +46,24 @@ def beam_no_VI_vibrations(alpha_lst_init, beta_lst_init, gamma_, just_no_VI=Fals
     # while ((u[point_barrier] >= 0) or (first_step)) and (not time_is_up):  # ???????????????????????
     # while not True:
 
-
+    pass_for_next_while = False
     u_next = u_init.copy()
-    while (u_next[point_barrier] >= 0) or just_no_VI or not if_we_are_ready_for_new_VI:
+    while (u_next[point_barrier] >= 0) or just_no_VI or not if_we_are_ready_for_new_VI or pass_for_next_while:
+        pass_for_next_while = False
 
-        if (t_global >= t_end) and not time_is_up:
+        # if (t_global >= t_end) and not time_is_up:
+        if (len(energy_data_global) > 0) and (energy_data_global[-1] <= energy_data_global[0] / np.exp(1)) and not time_is_up:
             time_is_up = True
-            # with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\time_energy_3_3.txt', 'w') as cur_file:
-            #     cur_file.write(str(t_global_lst))
-            # with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\energy_3_3.txt', 'w') as cur_file:
-            #     cur_file.write(str(energy_data_global))
+            tau = t_global
+            print('----------------------------------')
+            print(f'tau = {t_global}')
+            print(f'Number VI = {number_VI}')
+            print('----------------------------------')
+            graph(u_next, v_next, energy_over_modes_lst[:num_modes_plot_energy], case_plot=False, case_time_delay=False, case_time_delay_2=True)
+            with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\time_energy_test.txt', 'w') as cur_file:
+                cur_file.write(str(t_global_lst))
+            with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\energy_test.txt', 'w') as cur_file:
+                cur_file.write(str(energy_data_global))
 
 
         first_step = False
@@ -82,6 +90,7 @@ def beam_no_VI_vibrations(alpha_lst_init, beta_lst_init, gamma_, just_no_VI=Fals
         if not just_no_VI and if_we_are_ready_for_new_VI:
             # если зашли в барьер, откатываем шаг назад и уменьшаем шаг на меньший из листа шагов
             if (t_step_id > 0) and (u_next[point_barrier] < 0):
+                pass_for_next_while = True
                 in_barrier = True
                 print('In barrier')
                 t_global -= dt_next
@@ -89,6 +98,7 @@ def beam_no_VI_vibrations(alpha_lst_init, beta_lst_init, gamma_, just_no_VI=Fals
                 t_local -= dt_next
 
                 t_step_id -= 1
+                print(f't_step_id = {t_step_id}')
                 dt_next = t_step_lst[t_step_id]
 
                 continue
@@ -276,7 +286,23 @@ def beam_with_VI_vibrations(alpha_coef_lst, beta_coef_lst):
     number_VI += 1
     time_start_VI.append(t_global)
     time_end_VI.append(t_global + detachment_time)
-    energy_during_VI.append(energy_data_global[-1])
+
+    # это для рисовски вспомогательных линий на графике границ времени ВИ, для положения линии по оси игрик
+    if len(energy_data_global) > 0:
+        energy_during_VI.append(energy_data_global[-1])
+    else:
+        y1_init = np.zeros_like(x_vals)
+        v1_init = np.zeros_like(x_vals)
+
+        for n0, beta_n0 in enumerate(beta_coef_lst, start=1):
+            if beta_n0 != 0:
+                y1_init += beta_n0 * np.sin(pi * n0 * x_vals)
+
+        for m0, alpha_m0 in enumerate(alpha_coef_lst, start=1):
+            if alpha_m0 != 0:
+                v1_init += alpha_m0 * np.sin(pi * m0 * x_vals) * np.pi * m0
+
+        energy_during_VI.append(total_energy(y1_init, v1_init))
 
 
     first_step = True
@@ -518,28 +544,66 @@ def initial_conditions():
     alpha_coef_lst = np.zeros(num_modes)
     alpha_coef_lst[1-1] = 1
     alpha_coef_lst[3 - 1] = -1
-    # alpha_coef_lst[5 - 1] = -1
-    # alpha_coef_lst[7 - 1] = 1
-    # alpha_coef_lst[9 - 1] = 1
+    # alpha_coef_lst[5 - 1] = 2
+    # alpha_coef_lst[7 - 1] = -1
+    # alpha_coef_lst[9 - 1] = -1
+    # alpha_coef_lst[11 - 1] = -1
+    # alpha_coef_lst[13 - 1] = 1
+    # alpha_coef_lst[15 - 1] = -1
+
+    # np.random.seed(467)  # Фиксируем генератор случайных чисел
+    # alpha_coef_lst[:6] = np.random.uniform(-1, 1, 6)
+
+    alpha_coef_lst = alpha_coef_lst
+
     beta_coef_lst = np.zeros(num_modes)
+
+    # ---------- рисуем начальные условия ------
+    alpha_coef_lst_plot = alpha_coef_lst / np.arange(1, num_modes + 1) / np.pi
+
+    y1_init = np.zeros_like(x_vals)
+    v1_init = np.zeros_like(x_vals)
+    for n0, beta_n0 in enumerate(beta_coef_lst, start=1):
+        if beta_n0 != 0:
+            y1_init += beta_n0 * np.sin(pi * n0 * x_vals)
+
+    for m0, alpha_m0 in enumerate(alpha_coef_lst_plot, start=1):
+        if alpha_m0 != 0:
+            v1_init += alpha_m0 * np.sin(pi * m0 * x_vals) * np.pi * m0
+
+
+    cur_energy = total_energy(y1_init, v1_init)
+    print(f'First value cur_energy={cur_energy}')
+    energy_data_global.append(cur_energy)
+    energy_over_modes_lst = energy_over_modes(y1_init, v1_init, case_damping=False)
+    graph(y1_init, v1_init, energy_over_modes_lst, case_plot=False, if_contact=True, case_time_delay=False)
+
+    # -----------------
 
     return alpha_coef_lst, beta_coef_lst
 
 
-def graph(y_list, vel_list, energy_over_modes_lst, case_plot, case_time_delay=True, if_contact=False):
+def graph(y_list, vel_list, energy_over_modes_lst, case_plot, case_time_delay=True, if_contact=False, case_time_delay_2=False):
+    global def_graph_first_time
+
+    if def_graph_first_time:  # для отрисовки начальных условий
+        t_global_lst.append(0)
     # pass
     # if len(t_global_lst) % 200 == 0:
     # if round(t_global * 1e5) % 10 == 0:
-    if case_plot:
-        statement = len(t_global_lst) % 20 == 0
-    else:
+
+    if not case_plot or def_graph_first_time:
         statement = True
+    else:
+        statement = len(t_global_lst) % 20 == 0
 
     if statement:
         # print(total_energy)
         # print(sum(total_energy))
 
-        fig.suptitle('Time=' + str('%.2f' % t_global) + 's=' + str('%.2f' % (t_global * 1e3)) + 'ms\n' + 'Contact ' + str(if_contact) + '. Number of VI = ' + str(number_VI))
+        fig.suptitle(
+            'Time=' + str('%.2f' % t_global) + 's=' + str('%.2f' % (t_global * 1e3)) + 'ms' + ', loc_bar = ' + str(
+                a_bar) + '\n' + 'Contact ' + str(if_contact) + '. Number of VI = ' + str(number_VI) + ', tau = ' + str(round(tau, 3)))
 
         axs[0][0].set_title('Beam shape')
         axs[0][0].plot(x_vals, y_list, 'k', linewidth=1)
@@ -558,7 +622,7 @@ def graph(y_list, vel_list, energy_over_modes_lst, case_plot, case_time_delay=Tr
         axs[1][0].set_ylim(0, energy_data_global[0] * 1.2)
         axs[1][0].grid()
         # вспомогательные линии начала и конца ВИ
-        if case_plot:
+        if case_plot or case_time_delay_2:
             for ii in range(len(time_start_VI)):
                 axs[1][0].plot([time_start_VI[ii], time_start_VI[ii]],
                                [energy_during_VI[ii] - 0.1, energy_during_VI[ii] + 0.1], 'k--', linewidth=1)
@@ -571,14 +635,23 @@ def graph(y_list, vel_list, energy_over_modes_lst, case_plot, case_time_delay=Tr
         axs[1][1].bar(np.arange(1, num_modes_plot_energy + 1), df.origin[:])
         axs[1][1].set_xticks(np.arange(1, num_modes_plot_energy))
 
+        if def_graph_first_time:
+            plt.pause(1)
         if case_time_delay:
             plt.pause(0.01)
         else:
-            plt.pause(2)
+            plt.pause(1)
+        if case_time_delay_2:
+            plt.pause(12)
         axs[0][0].clear()
         axs[1][0].clear()
         axs[0][1].clear()
         axs[1][1].clear()
+
+    if def_graph_first_time:
+        energy_data_global.pop()
+        t_global_lst.pop()
+    def_graph_first_time = False  # строим начальное распределение перемещений и скорости
 
 
 
@@ -586,11 +659,11 @@ def graph(y_list, vel_list, energy_over_modes_lst, case_plot, case_time_delay=Tr
 pi = np.pi
 Nx = 2000 + 1    # Number of x points
 x_vals = np.linspace(0, 1, Nx)
-a_bar = 0.45
+a_bar = 0.5
 point_barrier = round((Nx - 1) * a_bar)
 N_max = 2000  # number terms in sum
-num_modes = 100
-gamma_ = 0.004
+num_modes = 150
+gamma_ = 0.001
 
 L = 1
 # Параметры задачи
@@ -605,6 +678,8 @@ number_VI = 0
 time_start_VI = []
 time_end_VI = []
 energy_during_VI = []
+tau = 0
+def_graph_first_time = True
 # -----------------------------------------------
 num_modes_plot_energy = 20
 omega_m_damping = lambda m: (np.pi * m) * np.sqrt(1 - ((np.pi * m) ** 2 * gamma_ ** 2) / 4)
@@ -677,16 +752,18 @@ time_is_up = False  # флаг на то, закончилось ли время
 
 print('Начинаем фигачить')
 
+fig, axs = plt.subplots(2, 2, figsize=(12, 7), squeeze=False)  # создаем саб плот из 2 графиков
+# plt.subplots_adjust(wspace=0.4, hspace=0.7)
+plt.subplots_adjust(wspace=0.2, hspace=0.2)
+plt.pause(0.1)
+
 # Задаем начальную деформацию и скорость балки
 [alpha_coef_lst_start, beta_coef_lst_start] = initial_conditions()
 print('Задали НУ')
 
 print('Запускаем динамику')
 
-fig, axs = plt.subplots(2, 2, figsize=(12, 7), squeeze=False)  # создаем саб плот из 2 графиков
-# plt.subplots_adjust(wspace=0.4, hspace=0.7)
-plt.subplots_adjust(wspace=0.1, hspace=0.2)
-plt.pause(0.1)
+
 
 # while True:
 # while not time_is_up:
@@ -703,11 +780,16 @@ print('Time = ', str(t_global))
 print(alpha_lst_init)
 print(beta_lst_init)
 # ---------------------------------------------------------
+first_loop = False
 while True:
     # ---------------------------------------------------------
     # Firstly we are modelling VI
-    # beta_coef_lst, alpha_coef_lst_draft = beta_coef_lst_start.copy(), alpha_coef_lst_start.copy()
-    beta_coef_lst, alpha_coef_lst_draft = beta_lst_init.copy(), alpha_lst_init.copy()
+    if first_loop:
+        beta_coef_lst, alpha_coef_lst_draft = beta_coef_lst_start.copy(), alpha_coef_lst_start.copy()
+        first_loop = False
+    else:
+        beta_coef_lst, alpha_coef_lst_draft = beta_lst_init.copy(), alpha_lst_init.copy()
+
     alpha_coef_lst = alpha_coef_lst_draft / np.arange(1, num_modes + 1) / np.pi
     print(alpha_coef_lst)
     print(beta_coef_lst)
