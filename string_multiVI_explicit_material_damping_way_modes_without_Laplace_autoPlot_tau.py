@@ -106,13 +106,13 @@ def beam_no_VI_vibrations(alpha_lst_init, beta_lst_init, gamma_, just_no_VI=Fals
             if (t_step_id > 0) and (u_next[point_barrier] < 0):
                 pass_for_next_while = True
                 in_barrier = True
-                print('In barrier. No VI. Trying in')
+                # print('In barrier. No VI. Trying in')
                 t_global -= dt_next
                 t_global_lst.pop()
                 t_local -= dt_next
 
                 t_step_id -= 1
-                print(f't_step_id = {t_step_id}')
+                # print(f't_step_id = {t_step_id}')
                 dt_next = t_step_lst[t_step_id]
 
                 continue
@@ -158,8 +158,8 @@ def beam_no_VI_vibrations(alpha_lst_init, beta_lst_init, gamma_, just_no_VI=Fals
         # print((u_next[point_barrier]))
         if (not in_barrier) and (t_step_id < len(t_step_lst)-1):
             t_step_id += 1
-            print('No VI. Increase steps')
-            print(f't_step_id = {t_step_id}')
+            # print('No VI. Increase steps')
+            # print(f't_step_id = {t_step_id}')
 
         dt_next = t_step_lst[t_step_id]
 
@@ -299,13 +299,13 @@ def beam_with_VI_vibrations(alpha_coef_lst_L, alpha_coef_lst_R, beta_coef_lst_L,
             if (t_step_id > 0) and (VI_force > 0):
                 pass_for_next_while = True
                 in_barrier = True
-                print('In barrier. VI. Trying out')
+                # print('In barrier. VI. Trying out')
                 t_global -= dt_next
                 t_global_lst.pop()
                 t_local -= dt_next
 
                 t_step_id -= 1
-                print(f'log t_step_id = {t_step_id}')
+                # print(f'log t_step_id = {t_step_id}')
                 dt_next = t_step_lst[t_step_id]
 
                 continue
@@ -377,8 +377,8 @@ def beam_with_VI_vibrations(alpha_coef_lst_L, alpha_coef_lst_R, beta_coef_lst_L,
         # print((u_next[point_barrier]))
         if (not in_barrier) and (t_step_id < len(t_step_lst) - 1):
             t_step_id += 1
-            print('VI. Increase steps')
-            print(f't_step_id = {t_step_id}')
+            # print('VI. Increase steps')
+            # print(f't_step_id = {t_step_id}')
 
         dt_next = t_step_lst[t_step_id]
 
@@ -399,17 +399,20 @@ def initial_conditions():
     # disp_start = 0 * np.sin(3 * np.pi * x_vals)
     # vel_start = -np.sin(np.pi * x_vals) - np.sin(5 * np.pi * x_vals)
     alpha_coef_lst = np.zeros(num_modes)
-    alpha_coef_lst[1-1] = 1
-    alpha_coef_lst[3 - 1] = -1
-    alpha_coef_lst[5 - 1] = 2
+    alpha_coef_lst[1-1] = 1  #8
+    alpha_coef_lst[2 - 1] = -1 #5
+    # alpha_coef_lst[3 - 1] = -2
+    # alpha_coef_lst[5 - 1] = 2
     # alpha_coef_lst[7 - 1] = -1
     # alpha_coef_lst[9 - 1] = -1
     # alpha_coef_lst[11 - 1] = -1
     # alpha_coef_lst[13 - 1] = 1
     # alpha_coef_lst[15 - 1] = -1
 
-    # np.random.seed(467)  # Фиксируем генератор случайных чисел
+    # np.random.seed(165)  # Фиксируем генератор случайных чисел
     # alpha_coef_lst[:6] = np.random.uniform(-1, 1, 6)
+    print('alpha_coef_lst')
+    print(alpha_coef_lst[:20])
 
     # --------------------------------------------------------------------
     # проверяем, надо ли менять знак начального поля скорости
@@ -621,7 +624,8 @@ print(t_step_lst)
 # print(beta_lst_init)
 # # ---------------------------------------------------------
 
-a_bar_lst = np.arange(0.2, 0.504, 0.005).tolist()
+a_bar_lst = np.arange(0.1, 0.901, 0.02).tolist()
+start_time = time.time()
 for i_id, a_bar_cur in enumerate(a_bar_lst):
     # -----------------------------------------------
 
@@ -726,6 +730,7 @@ for i_id, a_bar_cur in enumerate(a_bar_lst):
         # else:
         #     just_no_VI = False
         [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=just_no_VI)
+        # [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=True)
 
         if tau != 0:
             tau_lst.append(tau)
@@ -787,8 +792,18 @@ for i_id, a_bar_cur in enumerate(a_bar_lst):
 
         contact_borders.append(t_global)
 
+end_time = time.time()
+print(f"Execution time: {(end_time - start_time) / 60:.6f} min")
 print(f'tau lst')
 print(tau_lst)
+
+with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\log_tau.txt', 'w') as cur_file:
+    cur_file.write(str(tau_lst))
+
+plt.figure()
+plt.plot(a_bar_lst, tau_lst)
+plt.grid()
+plt.show()
 
 
 
