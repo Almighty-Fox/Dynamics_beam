@@ -393,15 +393,15 @@ def beam_with_VI_vibrations(alpha_coef_lst_L, alpha_coef_lst_R, beta_coef_lst_L,
 
 
 # Задачем начальные условия
-def initial_conditions():
+def initial_conditions(sigma_cur):
     beta_coef_lst = np.zeros(num_modes)
 
     # disp_start = 0 * np.sin(3 * np.pi * x_vals)
     # vel_start = -np.sin(np.pi * x_vals) - np.sin(5 * np.pi * x_vals)
     alpha_coef_lst = np.zeros(num_modes)
-    alpha_coef_lst[1-1] = 1  #8
-    alpha_coef_lst[2 - 1] = -1 #5
-    # alpha_coef_lst[3 - 1] = -2
+    # alpha_coef_lst[1-1] = 2  #8
+    # alpha_coef_lst[2 - 1] = 2 #5
+    # alpha_coef_lst[3 - 1] = 2
     # alpha_coef_lst[5 - 1] = 2
     # alpha_coef_lst[7 - 1] = -1
     # alpha_coef_lst[9 - 1] = -1
@@ -411,6 +411,30 @@ def initial_conditions():
 
     # np.random.seed(165)  # Фиксируем генератор случайных чисел
     # alpha_coef_lst[:6] = np.random.uniform(-1, 1, 6)
+
+    # --------------------------------------
+    # Распределяем начальную энергию по модам по Гауссу, задаем количество мод и стандартное отклонение
+    def gaussian_energy_distribution(N, sigma):
+        modes = np.arange(N)
+        gaussian_weights = np.exp(-0.5 * (modes / sigma) ** 2)
+        normalized_weights = gaussian_weights / np.sum(gaussian_weights)
+        return normalized_weights * 4
+
+
+    N_gauss = 20  # Количество мод
+    # sigma_gauss = 0.5  # Стандартное отклонение
+    sigma_gauss = sigma_cur
+    coefficients_gauss = gaussian_energy_distribution(N_gauss, sigma_gauss)
+    print(f'coefficients Gauss = {coefficients_gauss}')  # Выведет коэффициенты распределения энергии
+
+    for coef_i in range(N_gauss):
+        alpha_coef_lst[coef_i] = np.sqrt(coefficients_gauss[coef_i])
+
+    np.random.seed(27776)
+    signs = np.random.choice([-1, 1], size=N_gauss)
+    alpha_coef_lst[:N_gauss] = alpha_coef_lst[:N_gauss] * signs
+    # --------------------------------------
+
     print('alpha_coef_lst')
     print(alpha_coef_lst[:20])
 
@@ -536,7 +560,7 @@ def energy_over_modes(y_vals, v_vals, case_damping):
     else:
         case_omega_n_lst = omega_m_lst.copy()
     modal_coords, modal_velocities = disp_vel_to_alpha_beta_lst(y_vals, v_vals, num_modes_plot_energy)
-    energy_over_modes_lst = 0.5 * (modal_velocities**2 + case_omega_n_lst**2 * modal_coords**2)
+    energy_over_modes_lst = 0.25 * (modal_velocities**2 + case_omega_n_lst**2 * modal_coords**2)
 
     return energy_over_modes_lst
 
@@ -624,186 +648,195 @@ print(t_step_lst)
 # print(beta_lst_init)
 # # ---------------------------------------------------------
 
-a_bar_lst = np.arange(0.1, 0.901, 0.02).tolist()
+a_bar_lst = np.arange(0.2, 0.801, 0.05).tolist()
+sigma_lst = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0, 5.0, 6.0]
+# sigma_lst = [1.5]
 start_time = time.time()
-for i_id, a_bar_cur in enumerate(a_bar_lst):
-    # -----------------------------------------------
+for sigma_i in sigma_lst:
+    tau_lst = []
+    for i_id, a_bar_cur in enumerate(a_bar_lst):
+        # -----------------------------------------------
 
-    a_bar = round(a_bar_cur, 4)  # -----
-    point_barrier = round((Nx - 1) * a_bar)  # -----
-    Nx_L = point_barrier + 1
-    Nx_R = Nx - point_barrier
-    x_vals_L = np.linspace(0, a_bar, Nx_L)  # -----
-    x_vals_R = np.linspace(0, 1 - a_bar, Nx_R)  # -------
-
-
-
-    # проверяем, удовлетворяет ли количество мод заданному коэффициенту демпфирования
-    # ---------------------------------------
-    def finding_max_number_mode(gamma, string_length, num_modes_wish):
-        omega_sqrt = lambda n: 1 - (np.pi * n / string_length * gamma) ** 2 / 4
-        if omega_sqrt(num_modes_wish) > 0:
-            return num_modes_wish
-        else:
-            for n0 in range(1, num_modes_wish + 5):
-                if omega_sqrt(n0) < 0:
-                    #             print(f'max number of the mode = {n}')
-                    # raise ValueError(f'Максимально возможный номер моды = {n0 - 1}')
-                    return n0 - 1
-
-
-    num_modes_draft = 300
-
-    print('For whole string')
-    num_modes_draft = finding_max_number_mode(gamma_, 1.0, num_modes_draft)
-    print('For left part')
-    num_modes_draft = finding_max_number_mode(gamma_, a_bar, num_modes_draft)
-    print('For right part')
-    num_modes_draft = finding_max_number_mode(gamma_, (1 - a_bar), num_modes_draft)
-
-    num_modes = num_modes_draft
-    # ---------------------------------
-
-
-    # ------------------------------------------------
-    t_global = 0.0
-    t_global_lst = []
-    energy_data_global = []
-    number_VI = 0
-    time_start_VI = []
-    time_end_VI = []
-    energy_during_VI = []
-    tau = 0
-
-    first_time_tau = True
-    def_graph_first_time = True
-    contact_borders = []  # будем записывать значения начала и конца контактов для визуализации на графике энергии
-    # -----------------------------------------------
-
-    # -----------------------------------------------------------------------------------------------
+        a_bar = round(a_bar_cur, 4)  # -----
+        point_barrier = round((Nx - 1) * a_bar)  # -----
+        Nx_L = point_barrier + 1
+        Nx_R = Nx - point_barrier
+        x_vals_L = np.linspace(0, a_bar, Nx_L)  # -----
+        x_vals_R = np.linspace(0, 1 - a_bar, Nx_R)  # -------
 
 
 
-    just_no_VI = False
-    just_VI = False
-    first_loop = True
-    num_loop = 0
-
-    t_step_id = 0
-    t_step = t_step_lst[t_step_id]
-    t_end = 4.00
-    time_is_up = False  # флаг на то, закончилось ли время
-
-    print('Начинаем фигачить')
-
-    fig, axs = plt.subplots(2, 2, figsize=(12, 7), squeeze=False)  # создаем саб плот из 2 графиков
-    # plt.subplots_adjust(wspace=0.4, hspace=0.7)
-    plt.subplots_adjust(wspace=0.2, hspace=0.2)
-    plt.pause(0.1)
-
-    # Задаем начальную деформацию и скорость балки
-    [alpha_coef_lst_start, beta_coef_lst_start] = initial_conditions()
-    print('Задали НУ')
-
-    print('Запускаем динамику')
+        # проверяем, удовлетворяет ли количество мод заданному коэффициенту демпфирования
+        # ---------------------------------------
+        def finding_max_number_mode(gamma, string_length, num_modes_wish):
+            omega_sqrt = lambda n: 1 - (np.pi * n / string_length * gamma) ** 2 / 4
+            if omega_sqrt(num_modes_wish) > 0:
+                return num_modes_wish
+            else:
+                for n0 in range(1, num_modes_wish + 5):
+                    if omega_sqrt(n0) < 0:
+                        #             print(f'max number of the mode = {n}')
+                        # raise ValueError(f'Максимально возможный номер моды = {n0 - 1}')
+                        return n0 - 1
 
 
-    while True:
-        num_loop += 1
-        # ---------------------------------------------------------
-        # Switch to case without VI
-        if first_loop:
-            beta_coef_lst, alpha_coef_lst_draft = beta_coef_lst_start.copy(), alpha_coef_lst_start.copy()
-            first_loop = False
-        else:
-            # beta_coef_lst, alpha_coef_lst_draft = beta_lst_init.copy(), alpha_lst_init.copy()
-            beta_coef_lst, alpha_coef_lst_draft = disp_vel_to_alpha_beta_lst(disp_start, vel_start, num_modes)
+        num_modes_draft = 300
 
-        # beta_coef_lst, alpha_coef_lst_draft = disp_vel_to_alpha_beta_lst(disp_start, vel_start, num_modes)
-        alpha_coef_lst = ((alpha_coef_lst_draft + (np.pi * np.arange(1, num_modes + 1)) ** 2 * gamma_noVI / 2 * beta_coef_lst) /
-                          np.array([omega_m_damping(ii + 1, gamma_noVI) for ii in range(num_modes)]))
+        print('For whole string')
+        num_modes_draft = finding_max_number_mode(gamma_, 1.0, num_modes_draft)
+        print('For left part')
+        num_modes_draft = finding_max_number_mode(gamma_, a_bar, num_modes_draft)
+        print('For right part')
+        num_modes_draft = finding_max_number_mode(gamma_, (1 - a_bar), num_modes_draft)
 
-        print('Time = ', str(t_global))
+        num_modes = num_modes_draft
+        # ---------------------------------
 
-        # if num_loop == 20:
-        #     just_no_VI = True
-        # else:
-        #     just_no_VI = False
-        [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=just_no_VI)
-        # [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=True)
 
-        if tau != 0:
-            tau_lst.append(tau)
-            plt.close(fig)
-            break
-        # ---------------------------------------------------------
+        # ------------------------------------------------
+        t_global = 0.0
+        t_global_lst = []
+        energy_data_global = []
+        number_VI = 0
+        time_start_VI = []
+        time_end_VI = []
+        energy_during_VI = []
+        tau = 0
 
-        contact_borders.append(t_global)
+        first_time_tau = True
+        def_graph_first_time = True
+        contact_borders = []  # будем записывать значения начала и конца контактов для визуализации на графике энергии
+        # -----------------------------------------------
 
-        # ---------------------------------------------------------
-        # u_sum, v_sum = np.zeros(Nx), np.zeros(Nx)
-        # for m0, alpha_i in enumerate(alpha_lst_init, start=1):
-        #     u_sum += beta_lst_init[m0-1] * np.sin(np.pi * m0 * x_vals)
-        #     v_sum += (-(np.pi * m0)**2 * gamma_ / 2 * beta_lst_init[m0-1] + omega_m_damping(m0) * alpha_i) * np.sin(np.pi * m0 * x_vals)
-
-        number_VI += 1
-
-        u_sum_L, u_sum_R = u_sum[:point_barrier + 1], u_sum[point_barrier:]
-        v_sum_L, v_sum_R = v_sum[:point_barrier + 1], v_sum[point_barrier:]
-
-        beta_coef_lst_L, alpha_coef_lst_draft_L = disp_vel_to_alpha_beta_lst(u_sum_L, v_sum_L, num_modes, string_length=a_bar, left_string=True)
-        beta_coef_lst_R, alpha_coef_lst_draft_R = disp_vel_to_alpha_beta_lst(u_sum_R, v_sum_R, num_modes, string_length=(1.0 - a_bar), left_string=False)
-
-        alpha_coef_lst_L = ((alpha_coef_lst_draft_L + (
-                    np.pi * np.arange(1, num_modes + 1) / a_bar) ** 2 * gamma_VI / 2 * beta_coef_lst_L) / np.array(
-            [omega_m_damping(ii + 1, gamma_VI, string_length=a_bar) for ii in range(num_modes)]))
-
-        alpha_coef_lst_R = ((alpha_coef_lst_draft_R + (
-                np.pi * np.arange(1, num_modes + 1) / (1-a_bar)) ** 2 * gamma_VI / 2 * beta_coef_lst_R) / np.array(
-            [omega_m_damping(ii + 1, gamma_VI, string_length=(1-a_bar)) for ii in range(num_modes)]))
-
-        u1_init_L, u1_init_R = np.zeros(Nx_L), np.zeros(Nx_R)
-        for i in range(1, len(alpha_coef_lst_L) + 1):
-            u1_init_L += beta_coef_lst_L[i - 1] * np.sin(np.pi * i / a_bar * x_vals_L)
-            u1_init_R += beta_coef_lst_R[i - 1] * np.sin(np.pi * i / (1-a_bar) * x_vals_R)
-        # plt.figure()
-        # plt.plot(x_vals, np.concatenate((u1_init_L, u1_init_R[1:]), axis=0))
-        # plt.grid()
-        # plt.show()
+        # -----------------------------------------------------------------------------------------------
 
 
 
-        print('Time = ', str(t_global))
-        # if num_loop == 20:
-        #     just_VI = True
-        # else:
-        #     just_VI = False
-        [disp_start, vel_start] = beam_with_VI_vibrations(alpha_coef_lst_L, alpha_coef_lst_R, beta_coef_lst_L, beta_coef_lst_R, gamma_VI, just_VI=just_VI)
+        just_no_VI = False
+        just_VI = False
+        first_loop = True
+        num_loop = 0
 
-        if tau != 0:
-            tau_lst.append(tau)
-            plt.close(fig)
-            break
+        t_step_id = 0
+        t_step = t_step_lst[t_step_id]
+        t_end = 4.00
+        time_is_up = False  # флаг на то, закончилось ли время
 
-        # print(t_loc_lst)
-        print(f'log = {disp_start[point_barrier]}')
-        # ---------------------------------------------------------
+        print('Начинаем фигачить')
+
+        fig, axs = plt.subplots(2, 2, figsize=(12, 7), squeeze=False)  # создаем саб плот из 2 графиков
+        # plt.subplots_adjust(wspace=0.4, hspace=0.7)
+        plt.subplots_adjust(wspace=0.2, hspace=0.2)
+        plt.pause(0.1)
+
+        # Задаем начальную деформацию и скорость балки
+        [alpha_coef_lst_start, beta_coef_lst_start] = initial_conditions(sigma_cur=sigma_i)
+        print('Задали НУ')
+
+        print('Запускаем динамику')
 
 
-        contact_borders.append(t_global)
+        while True:
+            num_loop += 1
+            # ---------------------------------------------------------
+            # Switch to case without VI
+            if first_loop:
+                beta_coef_lst, alpha_coef_lst_draft = beta_coef_lst_start.copy(), alpha_coef_lst_start.copy()
+                first_loop = False
+            else:
+                # beta_coef_lst, alpha_coef_lst_draft = beta_lst_init.copy(), alpha_lst_init.copy()
+                beta_coef_lst, alpha_coef_lst_draft = disp_vel_to_alpha_beta_lst(disp_start, vel_start, num_modes)
 
-end_time = time.time()
-print(f"Execution time: {(end_time - start_time) / 60:.6f} min")
-print(f'tau lst')
-print(tau_lst)
+            # beta_coef_lst, alpha_coef_lst_draft = disp_vel_to_alpha_beta_lst(disp_start, vel_start, num_modes)
+            alpha_coef_lst = ((alpha_coef_lst_draft + (np.pi * np.arange(1, num_modes + 1)) ** 2 * gamma_noVI / 2 * beta_coef_lst) /
+                              np.array([omega_m_damping(ii + 1, gamma_noVI) for ii in range(num_modes)]))
 
-with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\log_tau.txt', 'w') as cur_file:
-    cur_file.write(str(tau_lst))
+            print('Time = ', str(t_global))
 
-plt.figure()
-plt.plot(a_bar_lst, tau_lst)
-plt.grid()
-plt.show()
+            # if num_loop == 20:
+            #     just_no_VI = True
+            # else:
+            #     just_no_VI = False
+            [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=just_no_VI)
+            # [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=True)
+
+            if tau != 0:
+                tau_lst.append(tau)
+                plt.close(fig)
+                break
+            # ---------------------------------------------------------
+
+            contact_borders.append(t_global)
+
+            # ---------------------------------------------------------
+            # u_sum, v_sum = np.zeros(Nx), np.zeros(Nx)
+            # for m0, alpha_i in enumerate(alpha_lst_init, start=1):
+            #     u_sum += beta_lst_init[m0-1] * np.sin(np.pi * m0 * x_vals)
+            #     v_sum += (-(np.pi * m0)**2 * gamma_ / 2 * beta_lst_init[m0-1] + omega_m_damping(m0) * alpha_i) * np.sin(np.pi * m0 * x_vals)
+
+            number_VI += 1
+
+            u_sum_L, u_sum_R = u_sum[:point_barrier + 1], u_sum[point_barrier:]
+            v_sum_L, v_sum_R = v_sum[:point_barrier + 1], v_sum[point_barrier:]
+
+            beta_coef_lst_L, alpha_coef_lst_draft_L = disp_vel_to_alpha_beta_lst(u_sum_L, v_sum_L, num_modes, string_length=a_bar, left_string=True)
+            beta_coef_lst_R, alpha_coef_lst_draft_R = disp_vel_to_alpha_beta_lst(u_sum_R, v_sum_R, num_modes, string_length=(1.0 - a_bar), left_string=False)
+
+            alpha_coef_lst_L = ((alpha_coef_lst_draft_L + (
+                        np.pi * np.arange(1, num_modes + 1) / a_bar) ** 2 * gamma_VI / 2 * beta_coef_lst_L) / np.array(
+                [omega_m_damping(ii + 1, gamma_VI, string_length=a_bar) for ii in range(num_modes)]))
+
+            alpha_coef_lst_R = ((alpha_coef_lst_draft_R + (
+                    np.pi * np.arange(1, num_modes + 1) / (1-a_bar)) ** 2 * gamma_VI / 2 * beta_coef_lst_R) / np.array(
+                [omega_m_damping(ii + 1, gamma_VI, string_length=(1-a_bar)) for ii in range(num_modes)]))
+
+            u1_init_L, u1_init_R = np.zeros(Nx_L), np.zeros(Nx_R)
+            for i in range(1, len(alpha_coef_lst_L) + 1):
+                u1_init_L += beta_coef_lst_L[i - 1] * np.sin(np.pi * i / a_bar * x_vals_L)
+                u1_init_R += beta_coef_lst_R[i - 1] * np.sin(np.pi * i / (1-a_bar) * x_vals_R)
+            # plt.figure()
+            # plt.plot(x_vals, np.concatenate((u1_init_L, u1_init_R[1:]), axis=0))
+            # plt.grid()
+            # plt.show()
+
+
+
+            print('Time = ', str(t_global))
+            # if num_loop == 20:
+            #     just_VI = True
+            # else:
+            #     just_VI = False
+            [disp_start, vel_start] = beam_with_VI_vibrations(alpha_coef_lst_L, alpha_coef_lst_R, beta_coef_lst_L, beta_coef_lst_R, gamma_VI, just_VI=just_VI)
+
+            if tau != 0:
+                tau_lst.append(tau)
+                plt.close(fig)
+                break
+
+            # print(t_loc_lst)
+            print(f'log = {disp_start[point_barrier]}')
+            # ---------------------------------------------------------
+
+
+            contact_borders.append(t_global)
+
+    end_time = time.time()
+    print(f"Execution time: {(end_time - start_time) / 60:.6f} min")
+    print(f'tau lst')
+    print(tau_lst)
+
+    # with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\log_tau.txt', 'w') as cur_file:
+    #     cur_file.write(str(tau_lst))
+
+    # plt.figure()
+    # plt.plot(a_bar_lst, tau_lst)
+    # plt.grid()
+    # plt.show()
+
+    with open(r'C:\Users\evgenii\PycharmProjects\Dynamics_beam\26_01_2025_string_multyVI\log_tau_gauss.txt', 'a') as cur_file:
+        cur_file.write(f"sigma= {sigma_i}\n")
+        cur_file.write(f"{tau_lst}\n")
+        cur_file.write("\n")
 
 
 
