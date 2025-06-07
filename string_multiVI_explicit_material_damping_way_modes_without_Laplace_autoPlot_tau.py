@@ -393,7 +393,7 @@ def beam_with_VI_vibrations(alpha_coef_lst_L, alpha_coef_lst_R, beta_coef_lst_L,
 
 
 # Задачем начальные условия
-def initial_conditions(sigma_cur, seed_number=12):  #sign_cur):
+def initial_conditions(sigma_cur, sign_cur):  #, seed_number=12):  #sign_cur):
     global vel_init_sign
 
     beta_coef_lst = np.zeros(num_modes)
@@ -423,7 +423,7 @@ def initial_conditions(sigma_cur, seed_number=12):  #sign_cur):
         return normalized_weights * 4
 
 
-    N_gauss = 20  # Количество мод
+    N_gauss = 3  #20  # Количество мод
     # sigma_gauss = 0.5  # Стандартное отклонение
     sigma_gauss = sigma_cur
     coefficients_gauss = gaussian_energy_distribution(N_gauss, sigma_gauss)
@@ -432,9 +432,9 @@ def initial_conditions(sigma_cur, seed_number=12):  #sign_cur):
     for coef_i in range(N_gauss):
         alpha_coef_lst[coef_i] = np.sqrt(coefficients_gauss[coef_i])
 
-    np.random.seed(seed_number)
-    signs = np.random.choice([-1, 1], size=N_gauss)
-    # signs = np.array(sign_cur)
+    # np.random.seed(seed_number)
+    # signs = np.random.choice([-1, 1], size=N_gauss)
+    signs = np.array(sign_cur)
     alpha_coef_lst[:N_gauss] = alpha_coef_lst[:N_gauss] * signs
     # --------------------------------------
 
@@ -530,10 +530,11 @@ def graph(y_list, vel_list, energy_over_modes_lst, case_plot, case_time_delay=Fa
         axs[1][1].set_title('Energy distribution over modes\nMax energy = {} %'.format(
             round(max(df.origin[:]) / sum(df.origin[:]) * 100)), fontsize=7, pad=0)
         axs[1][1].bar(np.arange(1, num_modes_plot_energy + 1), df.origin[:])
-        axs[1][1].set_xticks(np.arange(1, num_modes_plot_energy))
+        axs[1][1].set_xticks(np.arange(1, num_modes_plot_energy + 1))
+        print(f'Energy distribution \n{df.origin[:5]}')
 
         if def_graph_first_time:
-            plt.pause(2)
+            plt.pause(20)
         if case_time_delay:
             plt.pause(0.01)
         else:
@@ -662,16 +663,18 @@ a_bar_lst = np.arange(0.2, 0.801, 0.05).tolist()
 sigma_lst = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0, 5.0, 6.0]
 # sigma_lst = [1.2, 3.0]
 # signs_N3 = [[1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1], [-1, 1, 1], [-1, 1, -1], [-1, -1, 1], [-1, -1, -1]]
+signs_N3 = [[1, 1, 1]]
 vel_init_sign = True  # по умолчанию считаем, что струна вначале движется от барьера
 # seed_lst = [23, 124, 32, 444, 235, 2, 424, 2734]
 # seed_lst = [4773, 387]
 # seed_lst = [4453, 3887]
-seed_lst = [3344, 853, 2345, 4332]
+# seed_lst = [3344, 853, 2345, 4332]
 # seed_lst = [23, 124]
 start_time = time.time()
 for sigma_i in sigma_lst:
-    # for sign_cur in signs_N3:
-    for seed_cur in seed_lst:
+    sigma_i = 0.8
+    for sign_cur in signs_N3:
+    # for seed_cur in seed_lst:
         # sigma_i = 0.65
         tau_lst = []
         for i_id, a_bar_cur in enumerate(a_bar_lst):
@@ -751,7 +754,7 @@ for sigma_i in sigma_lst:
             plt.pause(0.1)
 
             # Задаем начальную деформацию и скорость балки
-            [alpha_coef_lst_start, beta_coef_lst_start] = initial_conditions(sigma_cur=sigma_i, seed_number=seed_cur)  #sign_cur=sign_cur)
+            [alpha_coef_lst_start, beta_coef_lst_start] = initial_conditions(sigma_cur=sigma_i, sign_cur=sign_cur)  #seed_number=seed_cur)
             print('Задали НУ')
             print('Запускаем динамику')
 
@@ -845,8 +848,8 @@ for sigma_i in sigma_lst:
                 #     just_no_VI = True
                 # else:
                 #     just_no_VI = False
-                [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=just_no_VI)
-                # [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=True)
+                # [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=just_no_VI)
+                [u_sum, v_sum] = beam_no_VI_vibrations(alpha_coef_lst, beta_coef_lst, gamma_noVI, just_no_VI=True)
 
                 if tau != 0:
                     tau_lst.append(tau)
