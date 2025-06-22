@@ -14,8 +14,8 @@ l02 = 0.5
 l03 = 1.0
 
 k1 = 3.0e7
-k2 = 3.0e6
-k3 = 3.0e7
+k2 = 3.0e3
+k3 = 3.0e6
 k_theta = 2.0e3
 
 # ----------------------------------
@@ -162,12 +162,23 @@ def try_find_equilibrium(F1, F2, initial_guess):
 # 5. Функция: определение положения в зависимости от F1, F2
 # ----------------------------------
 def classify_configuration(F1, F2):
-    # Попробуем три сценария:
-    scenarios = [
-        np.array([-0.5, -0.5]),  # обе массы вниз
-        np.array([+0.5, -0.5]) if F1 > F2 else np.array([-0.5, +0.5]),  # одна наверху
-        np.array([+0.5, +0.5])   # обе наверху
-    ]
+
+    if k1 == k3:
+        # Попробуем три сценария:
+        scenarios = [
+            np.array([-0.5, -0.5]),  # обе массы вниз
+            np.array([+0.5, -0.5]) if F1 > F2 else np.array([-0.5, +0.5]),  # одна наверху
+            np.array([+0.5, +0.5])   # обе наверху
+        ]
+
+    else:
+        # Попробуем four сценария:
+        scenarios = [
+            np.array([-0.5, -0.5]),  # обе массы вниз
+            np.array([-0.5, +0.5]),
+            np.array([+0.5, -0.5]),
+            np.array([+0.5, +0.5])  # обе наверху
+        ]
 
     for guess in scenarios:
         sol, stable = try_find_equilibrium(F1, F2, guess)
@@ -175,6 +186,11 @@ def classify_configuration(F1, F2):
         # print(sol)
         if sol is not None and stable:
             y1, y2 = sol
+
+            # Сравниваем знаки решения и предположения
+            if np.sign(y1) != np.sign(guess[0]) or np.sign(y2) != np.sign(guess[1]):
+                continue  # если знаки не совпадают — переходим к следующему guess
+
             # Классификация по знакам y1, y2
             if y1 < 0 and y2 < 0:
                 return 0  # нет перескока

@@ -125,11 +125,11 @@ plt.show()
 # 4. External forces (no load by default)
 # ----------------------------------------------------------------------
 def f1(t):
-    return -t * 1e7
+    return 0#-t * 1e7
 
 
 def f2(t):
-    return -t * 1.1e7
+    return 0#-t * 1.1e7
 
 # ----------------------------------------------------------------------
 # 5. Equations of motion
@@ -147,7 +147,7 @@ def eom(t, y):
           k2 * dL2 * dL2_dy2 +
           k_theta * theta2 * dtheta2_dy2)
 
-    c = 60.0  # демпфирующий коэффициент
+    c = 1000.0  # демпфирующий коэффициент
     a1_dd = (f1(t) - Q1 - c * v1) / m
     a2_dd = (f2(t) - Q2 - c * v2) / m
     return [v1, v2, a1_dd, a2_dd]
@@ -170,7 +170,7 @@ y_eq_down = fsolve(static_residuals, [-0.1, -0.1])
 # ----------------------------------------------------------------------
 # Initial state near the upper well
 # state = np.array([y_eq_up[0], y_eq_up[1], 0.0, 0.0])
-state = np.array([1.0, 1.0, 0.0, 0.0])
+state = np.array([0.866, 0.866, -11e3, -11e3])
 current_time = 0.0
 
 x0 = 0.0
