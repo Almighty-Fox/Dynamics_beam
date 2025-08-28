@@ -14,11 +14,12 @@ from numpy import sqrt
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
+from scipy.optimize import fsolve
 
 # ─── system parameters ────────────────────────────────────────────────
 a1 = a2 = a3 = 0.5  # м
-l01, l02, l03 = 1.0, 0.5, 1.0  # м
-k1, k2, k3 = 3.0e7, 3.0e6, 3.0e7  # Н/м
+l01, l02, l03 = 1.5, 0.5, 1.5  # м
+k1, k2, k3 = 3.0e7, 3.0e7, 3.0e7  # Н/м
 k_theta = 2.0e3  # Н·м/рад
 m = 1.0  # кг
 
@@ -26,7 +27,7 @@ RTOL = 1e-7
 ATOL = 1e-10
 dt_visual = 1e-5  # шаг, который мы *храним*
 max_step_solver = 1e-5
-T_final = 0.015  # с
+T_final = 0.01  # с
 
 # ─── slow-motion settings ─────────────────────────────────────────────
 OUTPUT_MP4 = "arch_dynamics_slowmo.mp4"
@@ -79,7 +80,7 @@ def eom(t, y):
           k2 * dL2 * dL2_dy2 +
           k_theta * th2 * dth2_dy2)
 
-    c = 10000.0
+    c = 100.0
     a1_dd = (f1(t) - Q1 - c * v1) / m
     a2_dd = (f2(t) - Q2 - c * v2) / m
     return [v1, v2, a1_dd, a2_dd]
@@ -134,7 +135,26 @@ def integrate_step(t0, y0, dt):
     return sol.y[:, -1]
 
 
-state, current_time = np.array([0.866, 0.866, -13313, -24115]), 0.0
+# state, current_time = np.array([0.866, 0.866, -13313, -24115]), 0.0
+# ---------- статика (эквилибриумы) -------------------------------------
+def static_residuals(Y):
+    y1, y2 = Y
+    (dL1, dL2, dL3, th1, th2,
+     dL1_dy1, dL2_dy1, dth1_dy1,
+     dL3_dy2, dL2_dy2, dth2_dy2) = geometry(y1, y2)
+    Q1 = k1 * dL1 * dL1_dy1 + k2 * dL2 * dL2_dy1 + k_theta * th1 * dth1_dy1
+    Q2 = k3 * dL3 * dL3_dy2 + k2 * dL2 * dL2_dy2 + k_theta * th2 * dth2_dy2
+    return Q1, Q2
+
+y_eq_up = fsolve(static_residuals, (1.1, 1.1))
+
+current_time = 0.0
+K = 3.104e+07
+alpha = 0.01
+v1_init = -np.sqrt(K * (1 + alpha))
+v2_init = -np.sqrt(K * (1 - alpha))
+state = np.array([y_eq_up[0], y_eq_up[1], v1_init, v2_init])
+
 while current_time < T_final:
     state = integrate_step(current_time, state, dt_visual)
     current_time += dt_visual

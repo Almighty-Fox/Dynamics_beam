@@ -3,13 +3,14 @@ from numpy import sqrt
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from scipy.ndimage import maximum_filter, minimum_filter
+from scipy.optimize import fsolve
 import random
 
 # ------------------------------------------------------------
 # 0. User settings
 # ------------------------------------------------------------
-T_FINAL = 0.04  # total integration time, s
-MAX_STEP = 1e-4  # max solver step
+T_FINAL = 0.005  # total integration time, s
+MAX_STEP = 1e-5  # max solver step
 RTOL, ATOL = 1e-7, 1e-10
 sample_every = 1  # record every Nth solver step
 
@@ -20,11 +21,22 @@ sample_every = 1  # record every Nth solver step
 #     (1000, 2000)
 # ]
 
-random.seed(552)
-initial_velocities = [
-    (random.randint(4000, 15000), random.randint(15000, 25000))
-    for _ in range(13)
-]
+# random.seed(552)
+# initial_velocities = [
+#     (random.randint(4000, 15000), random.randint(15000, 25000))
+#     for _ in range(13)
+# ]
+
+
+def finding_vel_init(alpha):
+    # alpha = 0.03
+    K_init = 3.104e+07
+    v1_init = np.sqrt(K_init * (1 + alpha))
+    v2_init = np.sqrt(K_init * (1 - alpha))
+    return (v1_init, v2_init)
+
+initial_velocities = [finding_vel_init(0.00), finding_vel_init(0.01)]
+
 print("initial_velocities = [")
 for v1, v2 in initial_velocities:
     print(f"    ({v1}, {v2}),")
@@ -34,10 +46,10 @@ print("]")
 # 1. System parameters
 # ------------------------------------------------------------
 a1, a2, a3 = 0.5, 0.5, 0.5  # geometry, m
-l01, l02, l03 = 1.0, 0.5, 1.0  # natural lengths, m
-k1, k2, k3 = 3.0e7, 3.0e6, 3.0e7  # spring stiffness, N/m
+l01, l02, l03 = 1.5, 0.5, 1.5  # natural lengths, m
+k1, k2, k3 = 3.0e7, 3.0e7, 3.0e7  # spring stiffness, N/m
 k_theta = 2.0e3  # torsional stiffness, N·m/rad
-c = 9500.0  # damping, N·s/m
+c = 100.0  # damping, N·s/m
 m = 1.0  # mass, kg
 
 
@@ -92,7 +104,19 @@ def eom(t, y):
 y1_trajs = []
 y2_trajs = []
 # approximate "up" equilibrium
-y_eq = (0.866, 0.866)
+# ---------- статика (эквилибриумы) -------------------------------------
+def static_residuals(Y):
+    y1, y2 = Y
+    (dL1, dL2, dL3, th1, th2,
+     dL1_dy1, dL2_dy1, dth1_dy1,
+     dL3_dy2, dL2_dy2, dth2_dy2) = geometry(y1, y2)
+    Q1 = k1 * dL1 * dL1_dy1 + k2 * dL2 * dL2_dy1 + k_theta * th1 * dth1_dy1
+    Q2 = k3 * dL3 * dL3_dy2 + k2 * dL2 * dL2_dy2 + k_theta * th2 * dth2_dy2
+    return Q1, Q2
+
+y_eq_up = fsolve(static_residuals, (1.1, 1.1))
+
+y_eq = (y_eq_up[0], y_eq_up[1])
 
 for v1_init, v2_init in initial_velocities:
     sol = solve_ivp(eom, (0, T_FINAL), [y_eq[0], y_eq[1], -v1_init, -v2_init],
