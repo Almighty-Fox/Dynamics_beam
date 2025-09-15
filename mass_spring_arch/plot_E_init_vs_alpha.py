@@ -102,7 +102,7 @@ def eom(t, y):
     # обобщённые силы
     Q1 = (k1 * dL1 * dL1_dy1 + k2 * dL2 * dL2_dy1 + k_theta * th1 * dth1_dy1)
     Q2 = (k3 * dL3 * dL3_dy2 + k2 * dL2 * dL2_dy2 + k_theta * th2 * dth2_dy2)
-    c = 100.0  # демпфирование
+    c = 10.0  # демпфирование
     a1_dd = (-Q1 - c * v1) / m
     a2_dd = (-Q2 - c * v2) / m
     return v1, v2, a1_dd, a2_dd
@@ -163,7 +163,7 @@ def snapped_through(K, alpha):
 def find_K_star(alpha, k_iter, k0_guess):
     """Возвращает минимальную кинетическую энергию K*, достаточную
     для перщёлкивания при данном α."""
-    K_low = 0.0
+    K_low = 2.48e7
     K_high = k0_guess
     # экспоненциальное увеличение, пока не сработало
     while not snapped_through(K_high, alpha):
@@ -171,6 +171,33 @@ def find_K_star(alpha, k_iter, k0_guess):
         K_high *= 2.0
         if K_high > 1e9:
             raise RuntimeError("Не удалось найти верхнюю границу K.")
+
+
+    # -------------- нижняя граница побега верхнего диапазона --------------------
+    # 1) линейная разбивка и ПОИСК СВЕРХУ ВНИЗ
+    n_sub = 100
+    subdiv = np.linspace(K_low, K_high, n_sub + 1)
+
+    prev_a = subdiv[-1]  # это a_high – побег гарантирован
+    for a in subdiv[-2::-1]:  # перебираем n_sub-1 точек в обратном порядке
+        if not snapped_through(a, alpha):  # нашли первую «безопасную» амплитуду
+            K_low, K_high = a, prev_a
+            break
+        prev_a = a  # сдвигаем «верхний» конец интервала
+    # если цикл закончился без break, интервал остаётся [a_low, a_high]
+    # -------------- нижняя граница побега нижнего диапазона --------------------
+    # # 2) линейная разбивка и ПОИСК СНИЗУ ВВЕРХ
+    # n_sub = 100
+    # subdiv = np.linspace(K_low, K_high, n_sub + 1)
+    #
+    # for ii in range(1, len(subdiv)):
+    #     if snapped_through(subdiv[ii], alpha):  # нашли первую «безопасную» амплитуду
+    #         K_low, K_high = subdiv[ii - 1], subdiv[ii]
+    #         break
+    # # если цикл закончился без break, интервал остаётся [a_low, a_high]
+    # ----------------------------------------------------------
+
+
     # двоичный поиск
     for _ in range(k_iter):
         K_mid = 0.5 * (K_low + K_high)
@@ -196,7 +223,7 @@ K_star = np.empty_like(alphas)
 print("Scanning α …")
 for i, a in enumerate(alphas):
     print(f'alpha = {a}')
-    K_star[i] = find_K_star(a, k_iter=14, k0_guess=32e6)
+    K_star[i] = find_K_star(a, k_iter=14, k0_guess=3.05e7)
     print(f"α={a:4.2f}  K*={K_star[i]:.3e}  E*={V_up + K_star[i]:.3e}")
 
 E_star = V_up + K_star
@@ -204,6 +231,7 @@ E_star = V_up + K_star
 # ──────────────────────────────────────────────────────────────
 # 4. Визуализация
 # ──────────────────────────────────────────────────────────────
+print(E_star)
 plt.figure(figsize=(6, 4))
 plt.plot(alphas, E_star, 'o-', lw=1)
 plt.xlabel(r'$\alpha$')
