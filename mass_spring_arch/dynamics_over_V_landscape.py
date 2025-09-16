@@ -11,7 +11,7 @@ import random
 # 0. User settings
 # ------------------------------------------------------------
 # T_FINAL = 0.005  # total integration time, s
-T_FINAL = 0.015
+T_FINAL = 0.005
 MAX_STEP = 1e-5  # max solver step
 RTOL, ATOL = 1e-7, 1e-10
 sample_every = 1  # record every Nth solver step
@@ -49,8 +49,8 @@ print("]")
 # 1. System parameters
 # ------------------------------------------------------------
 a1, a2, a3 = 0.5, 0.5, 0.5  # geometry, m
-l01, l02, l03 = 1.5, 0.5, 1.5  # natural lengths, m
-k1, k2, k3 = 3.0e7, 3.0e7, 3.0e7  # spring stiffness, N/m
+l01, l02, l03 = 0.62, 0.57, 0.62  # natural lengths, m
+k1, k2, k3 = 4.0e7, 3.34e7, 4.0e7  # spring stiffness, N/m
 k_theta = 2.0e3  # torsional stiffness, N·m/rad
 c = 10.0  # damping, N·s/m
 m = 1.0  # mass, kg
@@ -259,7 +259,7 @@ minima_coords = np.argwhere(minima_mask)
 
 # ---------------------------------------------------------------------------------------------
 # находим значения минимумом и максимумов, поэтому берем большие диапазоны по осям
-y_vals_log = np.linspace(-1.52, 1.52, 600)
+y_vals_log = np.linspace(-0.4, 0.4, 600)
 Y1_log, Y2_log = np.meshgrid(y_vals_log, y_vals_log)
 V_log = np.zeros_like(Y1_log)
 
