@@ -11,7 +11,7 @@ import random
 # 0. User settings
 # ------------------------------------------------------------
 # T_FINAL = 0.005  # total integration time, s
-T_FINAL = 0.005
+T_FINAL = 0.035
 MAX_STEP = 1e-5  # max solver step
 RTOL, ATOL = 1e-7, 1e-10
 sample_every = 1  # record every Nth solver step
@@ -33,12 +33,12 @@ sample_every = 1  # record every Nth solver step
 def finding_vel_init(alpha):
     # alpha = 0.03
     # K_init = 3.104e+07
-    K_init = 2.9282e+07
+    K_init = 3.20277e+05
     v1_init = np.sqrt(K_init * (1 + alpha))
     v2_init = np.sqrt(K_init * (1 - alpha))
     return (v1_init, v2_init)
 
-initial_velocities = [finding_vel_init(0.1)]
+initial_velocities = [finding_vel_init(2e-11)]
 
 print("initial_velocities = [")
 for v1, v2 in initial_velocities:
@@ -241,7 +241,7 @@ for v1_init, v2_init in initial_velocities:
 # 5. Plot potential & trajectories in original style
 # ------------------------------------------------------------
 # Grid for V
-y_vals = np.linspace(-2.6, 2.6, 600)
+y_vals = np.linspace(-0.75, 0.75, 600)
 Y1, Y2 = np.meshgrid(y_vals, y_vals)
 V = np.zeros_like(Y1)
 
@@ -418,15 +418,35 @@ filled = plt.contourf(Y1, Y2, V, levels=70, alpha=0.75)
 contours = plt.contour(Y1, Y2, V, levels=70, linewidths=0.8)
 plt.clabel(contours, inline=True, fontsize=8)
 
-# mark minima and maxima
-if minima_coords.size > 0:
-    xs_min = Y1[minima_coords[:, 0], minima_coords[:, 1]]
-    ys_min = Y2[minima_coords[:, 0], minima_coords[:, 1]]
-    plt.scatter(xs_min, ys_min, marker='o', facecolors='none', edgecolors='red', label='Local minima')
-if maxima_coords.size > 0:
-    xs_max = Y1[maxima_coords[:, 0], maxima_coords[:, 1]]
-    ys_max = Y2[maxima_coords[:, 0], maxima_coords[:, 1]]
-    plt.scatter(xs_max, ys_max, marker='X', facecolors='none', edgecolors='black', label='Local maxima')
+# # mark minima and maxima
+# if minima_coords.size > 0:
+#     xs_min = Y1[minima_coords[:, 0], minima_coords[:, 1]]
+#     ys_min = Y2[minima_coords[:, 0], minima_coords[:, 1]]
+#     plt.scatter(xs_min, ys_min, marker='o', facecolors='none', edgecolors='red', label='Local minima')
+# if maxima_coords.size > 0:
+#     xs_max = Y1[maxima_coords[:, 0], maxima_coords[:, 1]]
+#     ys_max = Y2[maxima_coords[:, 0], maxima_coords[:, 1]]
+#     plt.scatter(xs_max, ys_max, marker='X', facecolors='none', edgecolors='black', label='Local maxima')
+
+# седла: чёрные кресты
+saddle_pts = [(p['y1'], p['y2']) for p in crit if p['type'] == 'saddle']
+if saddle_pts:
+    xs_sad, ys_sad = zip(*saddle_pts)
+    plt.scatter(xs_sad, ys_sad, marker='x', c='black', s=60, zorder=6, label='Saddles')
+
+# максимумы и минимумы (исправил условие отбора)
+max_min_pts = [(p['y1'], p['y2']) for p in crit if p['type'] in ('min', 'max')]
+if max_min_pts:
+    xs_mm, ys_mm = zip(*max_min_pts)
+    plt.scatter(xs_mm, ys_mm, marker='o', facecolors='none', edgecolors='red', s=60,
+                zorder=6, label='Max / min')
+
+# подписи координат всех особых точек
+for p in crit:
+    plt.annotate(f"({p['y1']:.2f}, {p['y2']:.2f})\nV={p['V']:.2e}",
+                 (p['y1'], p['y2']),
+                 textcoords="offset points", xytext=(6, 4),
+                 fontsize=8, color='k')
 
 # overlay trajectories
 colors = plt.cm.tab10(np.linspace(0, 1, len(y1_trajs)))

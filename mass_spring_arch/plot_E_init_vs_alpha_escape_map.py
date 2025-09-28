@@ -33,19 +33,19 @@ from scipy.optimize import fsolve
 a1 = 0.5
 a2 = 0.5
 a3 = 0.5
-l01 = 1.5
-l02 = 0.5
-l03 = 1.5
-k1 = 3.0e7
-k2 = 3.0e7
-k3 = 3.0e7
+l01 = 0.62
+l02 = 0.57
+l03 = 0.62
+k1 = 4.0e7
+k2 = 3.34e7
+k3 = 4.0e7
 k_theta = 2.0e3
 m = 1.0
 
 RTOL = 1e-7
 ATOL = 1e-10
 max_step_solver = 1e-5
-T_final = 0.015
+T_final = 0.235
 VEL_TOL = 1e-2  # «покоится»
 
 
@@ -85,11 +85,13 @@ def static_residuals(Y):
     return Q1, Q2
 
 
-y_eq_up = fsolve(static_residuals, (1.1, 1.1))
-y_eq_down = fsolve(static_residuals, (-1.1, -1.1))
+y_eq_up = fsolve(static_residuals, (0.4, 0.4))
+y_eq_down = fsolve(static_residuals, (-0.4, -0.4))
 V_up = V(*y_eq_up)
 V_down = V(*y_eq_down)
 V_origin = V(0, 0)
+
+print(f'V_up = {V_up}')
 
 # print(V(0, 0))
 
@@ -214,8 +216,8 @@ def find_K_bracket(alpha, k0_guess=3.05e7, K_low_init=2.0e7, K_max_cap=1e9):
     """
     # K_low = 2.44e7
     # K_high = 3.05e7
-    K_low = 2.45e7
-    K_high = 3.04e7
+    K_low = 2.46e5
+    K_high = 6.1737e5
 
     # гарантируем, что нижняя граница не щёлкает
     if snapped_through(K_low, alpha):
@@ -235,7 +237,7 @@ def find_K_bracket(alpha, k0_guess=3.05e7, K_low_init=2.0e7, K_max_cap=1e9):
 # ──────────────────────────────────────────────────────────────
 # 3. Основной цикл по α и построение графика
 # ──────────────────────────────────────────────────────────────
-alphas = np.linspace(0.0, 1.0, 101)   # можно уплотнить/разрядить сетку
+alphas = np.linspace(0.0, 0.00000000002, 2)   # можно уплотнить/разрядить сетку
 n_sub = 200                           # точек K на каждую α
 
 alpha_list = []
@@ -244,7 +246,8 @@ flag_list = []   # True (зелёный) если snapped_through, иначе Fa
 
 print("Scanning grid (α, K) …")
 for a in alphas:
-    print(f"α = {a:.3f} → bracket for K …")
+    # print(f"α = {a:.3f} → bracket for K …")
+    print(f"α = {a:.7f} → bracket for K …")
     # подбираем рабочий диапазон K для текущего α
     K_low, K_high = find_K_bracket(a, k0_guess=3.05e7, K_low_init=2.0e7)
 
@@ -269,10 +272,26 @@ plt.figure(figsize=(7.5, 5.2))
 colors = np.where(flag_arr, 'tab:green', 'tab:red')
 plt.scatter(alpha_arr, K_arr, c=colors, s=12, alpha=0.8, edgecolors='none')
 
-plt.plot([0, 1], [V_origin, V_origin], '--k', lw=1)
+plt.plot([0, alphas[-1]], [V_origin, V_origin], '--k', lw=1)
 
 plt.xlabel(r'$\alpha$', fontsize=16)
 plt.ylabel(r'$K$ (initial kinetic energy)', fontsize=16)
+# plt.title('Snap-through map: green = snapped, red = not snapped')
+plt.title(r'Green = snapped, red = not snapped, c = {}'.format(c))
+plt.grid(True, alpha=0.3)
+# plt.show()
+
+# ------------- plot for full energy vs alpha ------------------------
+plt.figure(figsize=(7.5, 5.2))
+# Цвет: зелёный = успех, красный = нет
+colors = np.where(flag_arr, 'tab:green', 'tab:red')
+plt.scatter(alpha_arr, K_arr + V_up, c=colors, s=12, alpha=0.8, edgecolors='none')
+
+plt.plot([0, alphas[-1]], [V_origin, V_origin], '--k', lw=1)
+plt.plot([0, alphas[-1]], [3.462167e+05, 3.462167e+05], '--k', lw=1)
+
+plt.xlabel(r'$\alpha$', fontsize=16)
+plt.ylabel(r'$E$ (initial full energy)', fontsize=16)
 # plt.title('Snap-through map: green = snapped, red = not snapped')
 plt.title(r'Green = snapped, red = not snapped, c = {}'.format(c))
 plt.grid(True, alpha=0.3)
