@@ -52,8 +52,8 @@ Im   = bm*hm**3/12
 Lb   = 0.30
 Eb   = 210e9
 rhob = 7800.0
-bb   = 0.02
-hb   = 0.001
+bb   = 0.03
+hb   = 0.0014
 Sb   = bb*hb
 Ib   = bb*hb**3/12
 
@@ -66,12 +66,12 @@ Nm = 6     # у консольной балки
 Nb = 6     # у бистабильной балки
 
 # --- Позиции крепления нерастяжимой связи ---
-x_attach_m = 0.55*Lm   # по длине большой балки (от заделки)
-x_attach_b = 0.77*Lb   # по длине малой балки (от нижней заделки)
+x_attach_m = 0.50*Lm   # по длине большой балки (от заделки)
+x_attach_b = 0.50*Lb   # по длине малой балки (от нижней заделки)
 
 # --- Штрафная жёсткость связи ---
 # Kc = 5e7   # Н/м — достаточно большая, но не чрезмерная (можно варьировать)
-Kc = 1e2
+Kc = 1e5
 
 # --- Демпфирование ---
 # модальное относительное демпфирование для ОБЕИХ балок
@@ -79,8 +79,8 @@ zeta_m = 0.01
 zeta_b = 0.01
 
 # --- Возбуждение: ускорение основания большой балки ---
-a0      = 8.0      # м/с^2 (амплитуда)
-Omega_a = 2*np.pi*12.0   # рад/с, частота
+a0      = 14.0      # м/с^2 (амплитуда)
+Omega_a = 2*np.pi*1.2   # рад/с, частота
 # можно задать произвольный закон:
 def a_base(t: float) -> float:
     return a0*sin(Omega_a*t)
@@ -94,6 +94,13 @@ rtol, atol  = 1e-6, 1e-9
 max_step    = 1e-3      # ограничение шага (стабильность с Kc)
 # начальная яма для малой балки: +1 (правая) или -1 (левая)
 start_well_sign = +1
+
+# --- Пост-снап интеграция ---
+n_post_periods = 2.0   # сколько периодов добавить после snap
+post_freq_ref  = "main"  # "main" -> первая частота консоли;
+                         # "drive" -> частота возбуждения
+time_margin    = 0.25   # небольшой запас (в долях периода)
+
 
 # --- Визуализация ---
 Nx_m   = 400     # сетки по длине для отрисовки
@@ -277,6 +284,21 @@ if Kb_diag[0] >= 0.0:
 w2m, Vm = eigh(Km, Mm); wm = np.sqrt(np.clip(w2m, 0.0, None))
 w2b, Vb = eigh(Kb, Mb); wb_abs = np.sqrt(np.abs(w2b))  # могут быть отрицательные
 
+# Опорная частота для пост-интеграции
+if post_freq_ref == "drive":
+    w_ref = Omega_a
+else:
+    # возьмём первую положительную собственную частоту консоли
+    pos = np.where(wm > 1e-12)[0]
+    if pos.size == 0:
+        w_ref = Omega_a  # страховка
+    else:
+        w_ref = wm[pos[0]]
+
+T_ref   = 2*np.pi / max(w_ref, 1e-9)
+T_post  = n_post_periods * T_ref * (1.0 + time_margin)
+
+
 Cm = np.diag(2.0*zeta_m*wm*np.diag(Mm))
 Cb = np.diag(2.0*zeta_b*wb_abs*np.diag(Mb))
 
@@ -326,53 +348,57 @@ class ProgressPrinter:
                 sys.stdout.write("\n")
                 sys.stdout.flush()
 
-def make_rhs_and_event(t_final: float):
+def make_rhs_and_events(t_final: float):
     prog = ProgressPrinter(t_final, hz=progress_print_hz, ticks=progress_ticks)
+    t_snap_holder = [None]    # сюда положим время snap
 
     def rhs(t, y):
-        # прогресс почти без накладных расходов
         prog.maybe_print(t)
-
         q_m   = y[0:Nm]
         q_b   = y[Nm:Nm+Nb]
         qd_m  = y[Nm+Nb:Nm+Nb+Nm]
         qd_b  = y[Nm+Nb+Nm:]
 
-        # Связь: разность поперечных перемещений в точках
         w_m_star = phi_m_star @ q_m
         w_b_star = phi_b_star @ q_b
-        delta = w_m_star - w_b_star  # хотим = 0
-        Fc = Kc * delta              # сила связи (Н)
+        delta = (w_m_star - w_b_star) - delta0
+        Fc = Kc * delta
 
-        # Обобщённые силы от связи
-        Fm_c = -Fc * phi_m_star     # знак минус, т.к. Fc действует на "узел" в сторону уменьшения delta
+        Fm_c = -Fc * phi_m_star
         Fb_c = +Fc * phi_b_star
 
-        # Инерционная нагрузка от ускорения основания большой балки:
-        # q̈_m = M^-1 ( F_base - C q̇ - K q - NL - ... )
-        # F_base_i = ∫ (ρS * a_base(t) * φ_i(x)) dx  = (ρS * a)* ∫ φ_i dx
         Fm_base = rhoSm * a_base(t) * np.trapz(Phi_m, x_m, axis=1)
 
-        # Нелинейность только у малой балки (бистабильность)
-        qb2 = q_b @ q_b
-        Fb_nl = -gamma_b * qb2 * q_b   # переносим в правую часть со знаком "-"
+        qb2   = q_b @ q_b
+        Fb_nl = -gamma_b * qb2 * q_b
 
-        # Собираем ускорения
         qdd_m = Minv_m @ (Fm_base + Fm_c - Cm @ qd_m - Km @ q_m)
         qdd_b = Minv_b @ (Fb_c        - Cb @ qd_b - Kb @ q_b + Fb_nl)
 
         return np.hstack([qd_m, qd_b, qdd_m, qdd_b])
 
-    # Событие snap-through: средний прогиб малой балки меняет знак в нужном направлении
+    # 1) Событие snap: первый переход центра масс через 0 в нужном направлении
     want_dir = -1.0 if start_well_sign > 0 else +1.0
     def snap_event(t, y):
         q_b = y[Nm:Nm+Nb]
         wcm = cm_vec_b @ q_b
+        # если мы близко к корню — запомним момент snap
+        if abs(wcm) < 1e-9 and t_snap_holder[0] is None:
+            t_snap_holder[0] = t
         return wcm
-    snap_event.terminal  = True
+    snap_event.terminal  = False     # НЕ останавливаемся на snap
     snap_event.direction = want_dir
 
-    return rhs, snap_event
+    # 2) Событие "post": сработает через T_post после snap
+    def post_event(t, y):
+        if t_snap_holder[0] is None:
+            return +1.0   # отключено до snap
+        return t - (t_snap_holder[0] + T_post)
+    post_event.terminal  = True      # здесь и остановимся
+    post_event.direction = +1.0
+
+    return rhs, (snap_event, post_event), t_snap_holder
+
 
 # =============================================================
 # 4) Начальные условия
@@ -383,15 +409,24 @@ y0 = np.zeros(2*Ndof)
 if q_eq > 0:
     y0[Nm + 0] = start_well_sign * q_eq  # q_b[0] = ±q_eq
 
+q_b0 = y0[Nm:Nm+Nb]
+q_m0 = y0[0:Nm]
+delta0 = float( (phi_m_star @ q_m0) - (phi_b_star @ q_b0) )  # сохранить глобально
+
 # =============================================================
 # 5) Интегрирование
 # =============================================================
-rhs, snap_event = make_rhs_and_event(T_final)
+rhs, (snap_event, post_event), t_snap_holder = make_rhs_and_events(T_final)
+
+T_final_cap = T_final + T_post + 0.5*T_ref   # верхняя граница, если snap поздний  # >>> NEW
+
 print(f"P_b/Pcr_b = {Pb/Pcr_b:.3f},  q_eq ≈ {q_eq:.4e} м (по 1-й моде),  Kc = {Kc:.3e} Н/м")
-print(f"Nm={Nm}, Nb={Nb},  T_final={T_final}s,  a0={a0} m/s^2,  Ωa={Omega_a/(2*np.pi):.2f} Hz")
-sol = solve_ivp(rhs, (0.0, T_final), y0, method="RK45",
+print(f"Nm={Nm}, Nb={Nb},  T_final={T_final}s  (+{n_post_periods}T_ref post),  a0={a0} m/s^2,  Ωa={Omega_a/(2*np.pi):.2f} Hz")
+
+sol = solve_ivp(rhs, (0.0, T_final_cap), y0, method="RK45",
                 rtol=rtol, atol=atol, max_step=max_step,
-                events=snap_event)
+                events=(snap_event, post_event))  # <<< ДВА события
+
 
 t = sol.t
 Y = sol.y
@@ -401,8 +436,13 @@ qd_m_t = Y[Nm+Nb:Nm+Nb+Nm, :]
 qd_b_t = Y[Nm+Nb+Nm:, :]
 
 snapped = (sol.t_events[0].size > 0)
-t_snap = sol.t_events[0][0] if snapped else None
-print("SNAP status:", "SNAP at t = %.5f s" % t_snap if snapped else "NO SNAP")
+t_snap = (sol.t_events[0][0] if snapped else None)
+stopped_by_post = (len(sol.t_events) > 1 and sol.t_events[1].size > 0)  # >>> NEW
+
+print("\nSNAP status:", "SNAP at t = %.5f s" % t_snap if snapped else "NO SNAP")
+if stopped_by_post:
+    print(f"Stopped after ~{n_post_periods} periods post-snap at t = {sol.t[-1]:.5f} s")
+
 
 # =============================================================
 # 6) Подготовка данных для анимации
@@ -418,6 +458,38 @@ def interp_states(T, arr):
 q_m_f = interp_states(t, q_m_t)
 q_b_f = interp_states(t, q_b_t)
 
+# --- интерполяция скоростей мод консоли (для кинетической энергии) ---
+qd_m_f = interp_states(t, qd_m_t)   # shape: (Nm, frames)
+
+# --- строгие модальные энергии через собственный базис (K_m v = w^2 M_m v) ---
+# У нас уже есть из выше: w2m, Vm = eigh(Km, Mm)
+# SciPy нормирует так, что Vm.T @ Mm @ Vm = I, Vm.T @ Km @ Vm = diag(w2m)
+
+n_show = min(5, Nm)
+V5   = Vm[:, :n_show]                     # первые 5 собственных векторов
+w2_5 = w2m[:n_show]                       # их квадрат частот (>=0 для консоли)
+w_5  = np.sqrt(np.maximum(w2_5, 0.0))     # частоты
+
+# Проекция текущих состояний в модальные координаты:
+# q = Vm * η  ⇒  η = Vm^T M q;  аналогично для скоростей
+Mq_frames   = Mm @ q_m_f                  # (Nm, frames)
+Mqd_frames  = Mm @ qd_m_f                 # (Nm, frames)
+
+eta_f    = V5.T @ Mq_frames               # (n_show, frames)
+etad_f   = V5.T @ Mqd_frames              # (n_show, frames)
+
+# Модальные энергии (строго линейные, "независимые"):
+# E_j(t) = 1/2 * (etad_j)^2 + 1/2 * (w_j^2) * (eta_j)^2
+E_modes = 0.5*(etad_f**2) + 0.5*(w2_5[:, None])*(eta_f**2)
+E_modes = np.clip(E_modes, 0.0, None)     # на всякий случай отсекаем машинный шум < 0
+
+# Пределы по оси Y для второго графика
+Emin = 0.0
+Emax = np.percentile(E_modes, 99.5)
+if not np.isfinite(Emax) or Emax <= 0.0:
+    Emax = 1.0
+
+
 # Пространственные профили для каждого кадра
 profiles_m = q_m_f.T @ Phi_m   # (frames, Nx_m)
 profiles_b = q_b_f.T @ Phi_b   # (frames, Nx_b)
@@ -429,24 +501,18 @@ wb_star_frames = (phi_b_star @ q_b_f).ravel()
 # =============================================================
 # 7) Анимация: обе балки + связь
 # =============================================================
-fig, ax = plt.subplots(figsize=(9.5, 6.0))
+# ДВА сабплота: (1) профили балок, (2) энергии мод консоли
+fig, (ax, axE) = plt.subplots(2, 1, figsize=(9.5, 8.0), gridspec_kw={'height_ratios':[3, 2]}, sharex=False)
 
-# Рисуем "геом. оси" (нулевые линии) для наглядности
+# ==== верхняя ось (как было) ====
 ax.plot(x_m, 0*x_m, lw=0.8, alpha=0.4, color='k')
 ax.plot(x_offset_b + x_b, 0*x_b, lw=0.8, alpha=0.4, color='k')
-
-# Линии профилей
 line_m, = ax.plot([], [], lw=2.2, label="Основная консольная")
 line_b, = ax.plot([], [], lw=2.2, label="Бистабильная (fixed-fixed)")
-
-# Линия связи (между точками крепления, визуально — прямой отрезок)
 link_line, = ax.plot([], [], lw=2.6, alpha=0.9, label="Жёсткая связь")
-
-# Метки точек крепления
 pt_m, = ax.plot([], [], 'o', ms=6)
 pt_b, = ax.plot([], [], 'o', ms=6)
 
-# Пределы осей (по наблюдаемым амплитудам)
 y_all = np.hstack([profiles_m.ravel(), profiles_b.ravel()])
 ymin, ymax = np.percentile(y_all, [1, 99])
 y_span = ymax - ymin
@@ -454,24 +520,43 @@ if y_span < 1e-9:
     ymin -= 1e-6; ymax += 1e-6
 else:
     ymin -= 0.15*y_span; ymax += 0.15*y_span
-
 ax.set_xlim(-0.05*Lm, x_offset_b + Lb + 0.05*Lm)
 ax.set_ylim(ymin, ymax)
-ax.set_xlabel("Горизонтальная координата (искусственный сдвиг для второй балки), м")
+ax.set_xlabel("Горизонтальная координата (вторая балка сдвинута), м")
 ax.set_ylabel("Поперечный прогиб, м")
 ax.grid(True, ls='--', alpha=0.3)
 ax.legend(loc="upper right")
-
 title_text = ax.set_title("")
 
-# Время SNAP — вертикальная линия как текст в заголовке
 status_prefix = f"SNAP: t={t_snap:.4f} с" if snapped else "NO SNAP"
-
-# Предвычислим «жёсткое» — абсциссы
 xm_plot = x_m
 xb_plot = x_offset_b + x_b
 xm_star_plot = x_attach_m
 xb_star_plot = x_offset_b + x_attach_b
+
+# ==== нижняя ось (НОВАЯ) — энергии мод ====
+lines_E = []
+for i in range(E_modes.shape[0]):
+    (li,) = axE.plot(t_frames, E_modes[i], lw=1.8, label=fr"$E_{{m{i+1}}}(t)$")
+    lines_E.append(li)
+
+# вертикальный курсор по времени (будем двигать в update)
+cursor_time = axE.axvline(t_frames[0], ls='--', lw=2.0, alpha=0.8)
+
+axE.set_xlim(t_frames[0], t_frames[-1])
+axE.set_ylim(Emin, 1.1*Emax)
+axE.set_xlabel("Время, с")
+axE.set_ylabel("Энергия мод консоли, Дж")
+axE.grid(True, ls='--', alpha=0.3)
+axE.legend(ncol=min(5, E_modes.shape[0]), loc="upper right")
+
+snap_line = None
+if snapped and (t_snap is not None):
+    snap_line = axE.axvline(t_snap, ls='--', lw=2.2, alpha=0.9, color='red')
+    snap_line.set_label("Snap")
+    axE.legend(ncol=min(5, E_modes.shape[0]), loc="upper right")
+
+
 
 def init():
     line_m.set_data([], [])
@@ -480,29 +565,34 @@ def init():
     pt_m.set_data([], [])
     pt_b.set_data([], [])
     title_text.set_text("")
-    return line_m, line_b, link_line, pt_m, pt_b, title_text
+    cursor_time.set_xdata([t_frames[0], t_frames[0]])
+    return line_m, line_b, link_line, pt_m, pt_b, title_text, cursor_time
+
 
 def update(k):
-    wm = profiles_m[k]                  # (Nx_m,)
-    wb = profiles_b[k]                  # (Nx_b,)
+    wm = profiles_m[k]
+    wb = profiles_b[k]
     line_m.set_data(xm_plot, wm)
     line_b.set_data(xb_plot, wb)
 
-    # точки крепления
     y_m_star = wm_star_frames[k]
     y_b_star = wb_star_frames[k]
     pt_m.set_data([xm_star_plot], [y_m_star])
     pt_b.set_data([xb_star_plot], [y_b_star])
-
-    # связь — прямой отрезок
     link_line.set_data([xm_star_plot, xb_star_plot], [y_m_star, y_b_star])
 
-    title_text.set_text(f"{status_prefix}   |   t = {t_frames[k]:.3f} с")
-    return line_m, line_b, link_line, pt_m, pt_b, title_text
+    t_now = t_frames[k]
+    title_text.set_text(f"{status_prefix}   |   t = {t_now:.3f} с")
+
+    # --- движем курсор на графике энергий ---
+    cursor_time.set_xdata([t_now, t_now])
+
+    return line_m, line_b, link_line, pt_m, pt_b, title_text, cursor_time
+
 
 ani = animation.FuncAnimation(
     fig, update, frames=anim_frames, init_func=init,
-    blit=True, interval=1000/anim_fps, repeat=False
+    blit=True, interval=1000/anim_fps, repeat=True
 )
 
 plt.tight_layout()
