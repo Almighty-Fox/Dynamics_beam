@@ -289,13 +289,23 @@ for i, xs in enumerate(xs_list):
     print(f"x_s/L={xs/L:.4f}  ->  F_snap = {Fstar:.6g} N   [{status}; alpha={info['alpha']:.3e}; proj={info['proj']:.3e}]")
 
 # Нормируем x_s по L для оси
+# Normalize x_s by L for the x-axis
 xi = xs_list / L
 
-plt.figure(figsize=(9.6, 5.4))
-plt.plot(xi, Fsnaps, lw=2, marker='o', ms=4)
-plt.xlabel(r"$x_s/L$")
-plt.ylabel(r"$F_{\mathrm{snap}}$  [N]")
-plt.title("Минимальная сила перещёлкивания vs точка приложения силы (левая половина балки)")
-plt.grid(True, ls='--', alpha=0.35)
+fig = plt.figure(figsize=(10.5, 6.2))
+ax = plt.gca()
+ax.plot(xi, Fsnaps, lw=2, marker='o', ms=4)
+ax.set_xlabel(r"$x_s/L$")
+ax.set_ylabel(r"$F_{\mathrm{snap}}$  [N]")
+ax.grid(True, ls='--', alpha=0.35)
+
+# -------- Title with system parameters (English) --------
+ratio = P / Pcr
+title_lines = [
+    f"P/Pcr = {ratio:.3f} (P = {P:.3g} N,  Pcr = {Pcr:.3g} N), L = {L:.3f} m,  E = {E/1e9:.2f} GPa,  ρ = {rho:.0f} kg/m³, b = {b*1e3:.1f} mm,  h = {h*1e3:.1f} mm"
+]
+ax.set_title("\n".join(title_lines), loc='left', fontsize=10)
+
 plt.tight_layout()
 plt.show()
+
